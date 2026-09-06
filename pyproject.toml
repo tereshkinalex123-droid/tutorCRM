@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "docker>=7.2.0",
     "fastapi>=0.141.1",
+    "postgres>=4.0",
     "sqlalchemy>=2.0.52",
 ]

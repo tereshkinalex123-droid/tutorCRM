@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tutor_crm_db
+    restart: always
+    environment:
+      POSTGRES_USER: tutor_user
+      POSTGRES_PASSWORD: tutor_password
+      POSTGRES_DB: tutor_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    container_name: tutor_crm_api
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://tutor_user:tutor_password@db:5432/tutor_crm"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
