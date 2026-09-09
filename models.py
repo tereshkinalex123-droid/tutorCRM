@@ -48,7 +48,7 @@ class StudentTag(str, enum.Enum):
     INDIVIDUAL = "individual"
     GROUP = "group"
     COURSE = "course"
-    ABONEMENT = "abonement"
+    subscription = "subscription"
     CONSULTATION = "consultation"
 
 
