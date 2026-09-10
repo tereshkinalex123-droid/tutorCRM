@@ -63,6 +63,7 @@ class TimeCategory(str, enum.Enum):
     HOMEWORK_CHECKING = "homework_checking"
     ADMIN = "admin"
     OTHER = "other"
+    LESSON = "lesson"
 
 
 class TaskPriority(str, enum.Enum):
