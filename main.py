@@ -1,11 +1,14 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User
+from models import User, Student
 from typing import List
-from schemas import UserResponse
+from schemas import UserResponse, StudentResponse
+from auth import get_current_user
+import auth
 
 app = FastAPI()
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 @app.get("/")
 async def root():
@@ -17,3 +20,19 @@ async def get_all_users(
 ):
     students = db.query(User).all()
     return students
+
+@app.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    return user
+
+@app.get("{user_id}/students", response_model=List[StudentResponse])
+async def get_students(
+    user_id: int,
+    db: Session = Depends(get_db)):
+    students = db.query(Student).filter(Student.tutor_id == user_id).all()
+    return students
+
+@app.get("/items/")
+async def read_items(current_user: User = Depends(get_current_user)):
+    return {"username" : current_user.name}

@@ -4,6 +4,14 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from models import StudentStatus, StudentTag, HomeworkStatus, TimeCategory, TaskPriority
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class UserWithToken(BaseModel):
+    user: UserResponse
+    token: Token
+
 class UserBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     login: str = Field(..., min_length=3, max_length=50)
