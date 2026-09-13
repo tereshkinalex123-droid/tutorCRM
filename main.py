@@ -5,10 +5,12 @@ from models import User, Student
 from typing import List
 from schemas import UserResponse, StudentResponse
 from auth import get_current_user
-import auth
+from routers.auth import router as auth_router
+from routers.students import router as students_router
 
 app = FastAPI()
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(students_router, prefix="/students", tags=["students"])
 
 @app.get("/")
 async def root():
@@ -26,6 +28,8 @@ async def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     return user
 
+
+
 @app.get("{user_id}/students", response_model=List[StudentResponse])
 async def get_students(
     user_id: int,
@@ -36,3 +40,4 @@ async def get_students(
 @app.get("/items/")
 async def read_items(current_user: User = Depends(get_current_user)):
     return {"username" : current_user.name}
+
