@@ -19,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-class Base(DeclarativeBase):
+class BaseModel(DeclarativeBase):
     pass
 
 
@@ -72,7 +72,7 @@ class TaskPriority(str, enum.Enum):
     HIGH = "high"
 
 
-class User(Base, TimestampMixin):
+class User(BaseModel, TimestampMixin):
     __tablename__ = "user_account"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -96,7 +96,7 @@ class User(Base, TimestampMixin):
     )
 
 
-class Student(Base, TimestampMixin):
+class Student(BaseModel, TimestampMixin):
     __tablename__ = "student_account"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -138,7 +138,7 @@ class Student(Base, TimestampMixin):
     )
 
 
-class Lesson(Base, TimestampMixin):
+class Lesson(BaseModel, TimestampMixin):
     __tablename__ = "lesson"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -168,7 +168,7 @@ class Lesson(Base, TimestampMixin):
     )
 
 
-class Homework(Base, TimestampMixin):
+class Homework(BaseModel, TimestampMixin):
     __tablename__ = "homework"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -202,7 +202,7 @@ class Homework(Base, TimestampMixin):
     lesson: Mapped[Optional["Lesson"]] = relationship(back_populates="homework")
 
 
-class TimeEntry(Base, TimestampMixin):
+class TimeEntry(BaseModel, TimestampMixin):
     __tablename__ = "time_entries"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -223,7 +223,7 @@ class TimeEntry(Base, TimestampMixin):
     tutor: Mapped["User"] = relationship(back_populates="time_entries")
 
 
-class Task(Base, TimestampMixin):
+class Task(BaseModel, TimestampMixin):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

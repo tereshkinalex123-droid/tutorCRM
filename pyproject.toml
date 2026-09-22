@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.19.2",
+    "asyncpg>=0.31.0",
     "docker>=7.2.0",
     "fastapi>=0.141.1",
     "postgres>=4.0",
