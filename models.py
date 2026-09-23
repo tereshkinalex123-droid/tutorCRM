@@ -43,7 +43,6 @@ class StudentStatus(str, enum.Enum):
     ARCHIVED = "archived"
     IN_TRIAL = "in_trial"
 
-
 class StudentTag(str, enum.Enum):
     INDIVIDUAL = "individual"
     GROUP = "group"
