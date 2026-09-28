@@ -102,21 +102,80 @@ from fastapi import APIRouter, Depends
 router = APIRouter()
 
 
-@router.get("/")
-async def get_students(
+@router.get("/students")
+async def get_students_info(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     return await get_students_dashboard(db, tutor_id=current_user.id)
 
+from schemas import LessonsSummary
+
+async def get_the_nearest_lesson(
+    db: AsyncSession,
+    tutor_id: int,
+    now: datetime | None = None,
+) -> Lesson | None:
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    stmt = (
+        select(Lesson)
+        .where(Lesson.tutor_id == tutor_id, Lesson.date >= now)
+        .order_by(Lesson.date)
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+def week_bounds(now: datetime) -> tuple[datetime, datetime]:
+    start = now - timedelta(days=now.weekday())
+    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=7)
+    return start, end
+
+
+async def get_this_week_lessons(
+    db: AsyncSession,
+    tutor_id: int,
+    now: datetime | None = None,
+) -> int:
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    start, end = week_bounds(now)
+    stmt = (
+        select(func.count())
+        .select_from(Lesson)
+        .where(
+            Lesson.tutor_id == tutor_id,
+            Lesson.date >= start,
+            Lesson.date < end,
+        )
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one()
+
+
+@router.get("/lessons", response_model=LessonsSummary)
+async def get_lessons_info(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    now = datetime.now(timezone.utc)
+    nearest = await get_the_nearest_lesson(db, tutor_id=current_user.id, now=now)
+    this_week = await get_this_week_lessons(db, tutor_id=current_user.id, now=now)
+
+    return LessonsSummary(
+        the_nearest_lesson=nearest,
+        this_week_lessons=this_week,
+    )
+
+async def get_dynamic_dashboard():
+    pass
 
 
 async def get_income_dashboard():
     #define how to connect real payment system to database models
-    pass
-
-async def get_classes_dashboard():
-    pass
-
-async def get_dynamic_dashboard():
     pass

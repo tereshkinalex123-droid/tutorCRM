@@ -93,6 +93,10 @@ class User(BaseModel, TimestampMixin):
         back_populates="tutor",
         cascade="all, delete-orphan",
     )
+    lessons: Mapped[List["Lesson"]] = relationship(
+        back_populates="tutor",
+        cascade="all, delete-orphan",
+    )
 
 
 class Student(BaseModel, TimestampMixin):
@@ -146,6 +150,11 @@ class Lesson(BaseModel, TimestampMixin):
         nullable=False,
         index=True,
     )
+    tutor_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
@@ -161,6 +170,8 @@ class Lesson(BaseModel, TimestampMixin):
     )
 
     student: Mapped["Student"] = relationship(back_populates="lessons")
+    tutor: Mapped["User"] = relationship(back_populates="lessons")
+
     homework: Mapped[Optional["Homework"]] = relationship(
         back_populates="lesson",
         uselist=False,

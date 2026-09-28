@@ -54,12 +54,17 @@ class LessonUpdate(BaseModel):
     grade: Optional[int] = Field(None, ge=1, le=10)
 
 
-class LessonResponse(LessonBase):
+class LessonResponse(BaseModel):
     id: int
-    created_at: datetime
-    updated_at: datetime
+    tutor_id: int
+    student_id: int
+    date: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class LessonsSummary(BaseModel):
+    the_nearest_lesson: LessonResponse | None
+    this_week_lessons: int
 
 
 class HomeworkBase(BaseModel):
