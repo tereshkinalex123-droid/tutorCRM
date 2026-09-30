@@ -36,6 +36,10 @@ class TimestampMixin:
         nullable=False,
     )
 
+class PaymentStatus(str, enum.Enum):
+    PENDING = "pending"
+    PAID = "paid"
+    CANCELED = "canceled"
 
 class StudentStatus(str, enum.Enum):
     ACTIVE = "active"
@@ -97,7 +101,10 @@ class User(BaseModel, TimestampMixin):
         back_populates="tutor",
         cascade="all, delete-orphan",
     )
-
+    incomes: Mapped[List["Income"]] = relationship(
+        back_populates="tutor",
+        cascade="all, delete-orphan",
+    )
 
 class Student(BaseModel, TimestampMixin):
     __tablename__ = "student_account"
@@ -140,35 +147,43 @@ class Student(BaseModel, TimestampMixin):
         cascade="all, delete-orphan",
     )
 
+    incomes: Mapped[List["Income"]] = relationship(
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
 
 class Lesson(BaseModel, TimestampMixin):
     __tablename__ = "lesson"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
     student_id: Mapped[int] = mapped_column(
         ForeignKey("student_account.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
     tutor_id: Mapped[int] = mapped_column(
         ForeignKey("user_account.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    income: Mapped[Optional["Income"]] = relationship(
+        back_populates="lesson",
+        uselist=False,
+    )
 
     grade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (
         CheckConstraint("grade >= 1 AND grade <= 10", name="check_valid_grade_range"),
     )
-
     student: Mapped["Student"] = relationship(back_populates="lessons")
     tutor: Mapped["User"] = relationship(back_populates="lessons")
 
@@ -254,3 +269,39 @@ class Task(BaseModel, TimestampMixin):
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     tutor: Mapped["User"] = relationship(back_populates="tasks")
+
+class Income(BaseModel, TimestampMixin):
+    __tablename__ = "incomes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    stripe_session_id: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    paid_date: Mapped[datetime] = mapped_column(Date, nullable=True)
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    payment_status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name="payment_status_name"),
+        default=PaymentStatus.PENDING,
+        nullable=False,
+    )
+
+    lesson_id: Mapped[int] = mapped_column(
+        ForeignKey("lesson.id", ondelete="SET NULL"),
+        nullable=False,
+        index=True,
+    )
+
+    tutor_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    student_id: Mapped[int] = mapped_column(
+        ForeignKey("student_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    lesson: Mapped["Lesson"] = relationship(back_populates="income")
+    student: Mapped["Student"] = relationship(back_populates="incomes")
+    tutor: Mapped["User"] = relationship(back_populates="incomes")

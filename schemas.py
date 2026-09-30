@@ -33,6 +33,7 @@ class UserWithToken(BaseModel):
 
 class LessonBase(BaseModel):
     student_id: int = Field(..., )
+    tutor_id: int = Field(..., )
     date: datetime = Field(...,  )
     duration_minutes: int = Field(60, gt=0, le=480)
     topic: str = Field(..., min_length=2, max_length=255)
@@ -59,8 +60,20 @@ class LessonResponse(BaseModel):
     tutor_id: int
     student_id: int
     date: datetime
+    is_paid: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+#payment
+class PaymentLinkCreate(BaseModel):
+    lesson_id: int
+
+class PaymentLinkResponse(BaseModel):
+    checkout_url: str
+    session_id: str
+    amount: Decimal
+
+#dashboard responses
 
 class LessonsSummary(BaseModel):
     the_nearest_lesson: LessonResponse | None
