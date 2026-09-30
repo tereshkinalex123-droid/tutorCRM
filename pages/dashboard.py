@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func, distinct, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import Student, Lesson, StudentStatus
+from models import Student, Lesson, StudentStatus, Income
+from decimal import Decimal
 
 RED_ZONE_AFTER_DAYS = 14
 INACTIVE_AFTER_DAYS = 30
@@ -109,7 +110,7 @@ async def get_students_info(
 ):
     return await get_students_dashboard(db, tutor_id=current_user.id)
 
-from schemas import LessonsSummary
+from schemas import LessonsSummary, IncomeSummary
 
 async def get_the_nearest_lesson(
     db: AsyncSession,
@@ -175,7 +176,55 @@ async def get_lessons_info(
 async def get_dynamic_dashboard():
     pass
 
+async def get_month_sum(
+    db: AsyncSession,
+    tutor_id: int
+) -> Decimal:
+    now = datetime.now(timezone.utc)  # or now
 
-async def get_income_dashboard():
-    #define how to connect real payment system to database models
-    pass
+    cur_start, cur_end = month_bounds(now.year, now.month)
+
+    stmt = (select(func.coalesce(func.sum(Income.price), Decimal("0.00")))
+    .where(Income.tutor_id == tutor_id)
+    .where(Income.paid_date >= cur_start, Income.paid_date < cur_end))
+
+    return (await db.execute(stmt)).scalar_one()
+
+async def get_income_dynamic(
+    db: AsyncSession,
+    tutor_id: int
+) -> Decimal:
+    now = datetime.now(timezone.utc)  # or now
+
+    cur_start, cur_end = month_bounds(now.year, now.month)
+    p_year, p_month = prev_month(now.year, now.month)
+    prev_start, prev_end = month_bounds(p_year, p_month)
+
+
+    stmt1 = (select(func.coalesce(func.sum(Income.price), Decimal("0.00")))
+            .where(Income.tutor_id == tutor_id)
+            .where(Income.paid_date >= prev_start, Income.paid_date < prev_end))
+
+    stmt2 = (select(func.coalesce(func.sum(Income.price), Decimal("0.00")))
+            .where(Income.tutor_id == tutor_id)
+            .where(Income.paid_date >= cur_start, Income.paid_date < cur_end))
+
+    res1 = await db.execute(stmt1)
+    prev_income = res1.scalar_one()
+    res2 = await db.execute(stmt2)
+    cur_income = res2.scalar_one()
+    return cur_income - prev_income
+
+
+@router.get("/incomes", response_model=IncomeSummary)
+async def get_income_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    income_dynamic = await get_income_dynamic(db, tutor_id=current_user.id)
+    month_sum = await get_month_sum(db, tutor_id=current_user.id)
+
+    return {
+        "income_dynamic": income_dynamic,
+        "month_sum": month_sum,
+    }

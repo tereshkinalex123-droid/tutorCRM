@@ -79,6 +79,9 @@ class LessonsSummary(BaseModel):
     the_nearest_lesson: LessonResponse | None
     this_week_lessons: int
 
+class IncomeSummary(BaseModel):
+    income_dynamic: Decimal
+    month_sum: Decimal
 
 class HomeworkBase(BaseModel):
     student_id: int
