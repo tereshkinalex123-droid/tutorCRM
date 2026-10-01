@@ -1,7 +1,7 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 from models import StudentStatus, StudentTag, HomeworkStatus, TimeCategory, TaskPriority
 
 
@@ -44,7 +44,17 @@ class LessonBase(BaseModel):
     grade: Optional[int] = Field(None, ge=1, le=10)
 
 class LessonCreate(LessonBase):
-    pass
+    @field_validator("date", mode="before")
+    @classmethod
+    def validate_date(cls, value):
+        if isinstance(value, str):
+            try:
+                parsed_dt = datetime.strptime(value, "%Y-%m-%d %H:%M")
+                return parsed_dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                raise ValueError("Date format must be exactly: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
+        return value
+
 
 class LessonUpdate(BaseModel):
     date: Optional[datetime] = None
@@ -60,9 +70,14 @@ class LessonResponse(BaseModel):
     tutor_id: int
     student_id: int
     date: datetime
+    duration_minutes: int
     is_paid: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("date")
+    def format_date(self, dt: datetime):
+        return dt.strftime("%Y-%m-%d %H:%M")
 
 #payment
 class PaymentLinkCreate(BaseModel):
