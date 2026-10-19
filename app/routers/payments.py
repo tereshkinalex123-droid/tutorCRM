@@ -1,16 +1,25 @@
 from datetime import datetime, timezone
 import stripe
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status, Query
 from sqlalchemy.orm import selectinload
-
 from auth import get_current_user
 from config import settings
 from database import get_db
-from models import Payment, Lesson, PaymentStatus, User
-from schemas.payment import PaymentLinkResponse
 
+from typing import Optional
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from models import (
+    BalanceTransaction,
+    Payment,
+    PaymentStatus,
+    Student,
+    TransactionType,
+    User,
+    Lesson
+)
+from schemas.payment import PaymentCreate, PaymentUpdate, PaymentLinkResponse, PaymentResponse
+import cruds.payments as crud
 
 router = APIRouter()
 stripe.api_key = settings.stripe_secret_key
@@ -68,12 +77,12 @@ async def create_checkout_session(
             cancel_url=f"{settings.frontend_url}/payment-cancelled",
         )
 
-        stmt_income = select(Income).where(Income.lesson_id == lesson.id)
+        stmt_income = select(Payment).where(Payment.lesson_id == lesson.id)
         res_income = await db.execute(stmt_income)
         income = res_income.scalar_one_or_none()
 
         if not income:
-            income = Income(
+            income = Payment(
                 tutor_id=current_user.id,
                 student_id=lesson.student_id,
                 lesson_id=lesson.id,
@@ -118,9 +127,9 @@ async def stripe_webhook(
         stripe_session_id = session_data["id"]
 
         res = await db.execute(
-            select(Income)
-            .where(Income.stripe_session_id == stripe_session_id)
-            .options(selectinload(Income.lesson))
+            select(Payment)
+            .where(Payment.stripe_session_id == stripe_session_id)
+            .options(selectinload(Payment.lesson))
         )
         income = res.scalar_one_or_none()
 
@@ -139,3 +148,70 @@ async def stripe_webhook(
             await db.commit()
 
     return {"status": "success"}
+
+@router.get("/", response_model=list[PaymentResponse])
+async def get_payments(
+    student_id: Optional[int] = Query(None, description="Filter by student ID"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await crud.get_all_payments(
+        db, tutor_id=current_user.id, student_id=student_id
+    )
+
+
+@router.get("/{payment_id}", response_model=PaymentResponse)
+async def get_payment(
+    payment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    payment = await crud.get_payment(
+        db, payment_id=payment_id, tutor_id=current_user.id
+    )
+    if not payment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    return payment
+
+
+@router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+async def create_payment(
+    payment_in: PaymentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await crud.create_payment(
+        db, payment_in=payment_in, current_user=current_user
+    )
+
+
+@router.patch("/{payment_id}", response_model=PaymentResponse)
+async def update_payment(
+    payment_id: int,
+    payment_in: PaymentUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    payment = await crud.get_payment(
+        db, payment_id=payment_id, tutor_id=current_user.id
+    )
+    if not payment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    return await crud.update_payment(
+        db, payment=payment, payment_in=payment_in, current_user=current_user
+    )
+
+
+@router.delete("/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_payment(
+    payment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    payment = await crud.get_payment(
+        db, payment_id=payment_id, tutor_id=current_user.id
+    )
+    if not payment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    await crud.delete_payment(db, payment=payment)
+    return None

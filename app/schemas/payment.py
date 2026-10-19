@@ -9,7 +9,7 @@ from models import PaymentStatus, PaymentMethod
 class PaymentBase(BaseModel):
     student_id: int
     paid_date: datetime = Field(..., description="Format: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
-    price: Decimal = Field(Decimal("0.00"), ge=0)
+    amount: Decimal = Field(Decimal("0.00"), ge=0)
     status: PaymentStatus = PaymentStatus.PENDING
     method: PaymentMethod = PaymentMethod.CASH
     stripe_session_id: Optional[str] = Field(None, min_length=2, max_length=255)

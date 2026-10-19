@@ -37,10 +37,11 @@ class TimestampMixin:
     )
 
 class StudentStatus(str, enum.Enum):
-    ACTIVE = "active"
-    PAUSED = "paused"
-    ARCHIVED = "archived"
-    IN_TRIAL = "in_trial"
+    LEAD_BEFORE = "LEAD_BEFORE"  #New inquiry, no trial yet
+    LEAD_APPOINTED = "LEAD_APPOINTED"  #Trial lesson scheduled
+    LEAD_AFTER = "LEAD_AFTER"  #Trial completed, pending decision
+    ACTIVE = "ACTIVE"  #Regular active student
+    ARCHIVED = "ARCHIVED"
 
 class LessonType(str, enum.Enum):
     STUDENT = "student"
@@ -58,12 +59,10 @@ class HomeworkStatus(str, enum.Enum):
     SUBMITTED = "submitted"
     CHECKED = "checked"
 
-
 class TaskPriority(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
-
 
 class User(BaseModel, TimestampMixin):
     __tablename__ = "user_account"
@@ -272,7 +271,7 @@ class Payment(BaseModel, TimestampMixin):
         String(255), unique=True, nullable=True, index=True
     )
 
-    paid_at: Mapped[Optional[datetime]] = mapped_column(
+    paid_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

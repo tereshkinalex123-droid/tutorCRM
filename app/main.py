@@ -5,6 +5,8 @@ from routers.students import router as students_router
 from routers.users import router as users_router
 from routers.lessons import router as lessons_router
 from routers.payments import router as payments_router
+from routers.leads import router as leads_router
+from routers.tasks import router as tasks_router
 from pages.dashboard import router as dashboard_router
 import uvicorn
 
@@ -15,6 +17,8 @@ app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(lessons_router, prefix="/lessons", tags=["lessons"])
 app.include_router(payments_router, prefix="/payments", tags=["payments"])
+app.include_router(leads_router, prefix="/leads", tags=["leads"])
+app.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
 
 @app.get("/")
 async def root():

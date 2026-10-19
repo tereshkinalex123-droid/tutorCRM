@@ -89,7 +89,10 @@ async def create_lesson(
     if student.date_of_last_study is None or lesson_day > student.date_of_last_study:
         student.date_of_last_study = lesson_day
 
-    if student.status == StudentStatus.ARCHIVED:
+    if student.status == StudentStatus.LEAD_BEFORE:
+        student.status = StudentStatus.LEAD_APPOINTED
+
+    elif student.status == StudentStatus.ARCHIVED:
         student.status = StudentStatus.ACTIVE
 
     await db.commit()

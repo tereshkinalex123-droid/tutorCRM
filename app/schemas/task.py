@@ -1,14 +1,14 @@
 from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
-from ..models import TaskPriority
+from models import TaskPriority
 
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     priority: TaskPriority = TaskPriority.MEDIUM
-    date: Optional[datetime] = Field(..., description="Format: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
-    due_date: Optional[date] = None
+    due_date: Optional[datetime] = None
+    date: Optional[datetime] = Field(None, description="Format: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
     is_completed: bool = False
 
 class TaskCreate(TaskBase):
