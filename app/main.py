@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
-from routers.auth import router as auth_router
+from auth import router as auth_router
 from routers.students import router as students_router
 from routers.users import router as users_router
 from routers.lessons import router as lessons_router
+from routers.payments import router as payments_router
 from pages.dashboard import router as dashboard_router
-from payments import router as payments_router
 import uvicorn
 
 app = FastAPI()

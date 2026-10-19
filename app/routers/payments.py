@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 from auth import get_current_user
 from config import settings
 from database import get_db
-from models import Income, Lesson, PaymentStatus, User
-from schemas import PaymentLinkResponse
+from models import Payment, Lesson, PaymentStatus, User
+from schemas.payment import PaymentLinkResponse
 
 
 router = APIRouter()

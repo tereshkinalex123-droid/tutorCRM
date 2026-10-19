@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func, distinct, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import Student, Lesson, StudentStatus, Income
+from models import Student, Lesson, StudentStatus, Payment
 from decimal import Decimal
+from schemas.dashboard import LessonsSummary, PaymentSummary
 
 RED_ZONE_AFTER_DAYS = 14
 INACTIVE_AFTER_DAYS = 30
@@ -110,7 +111,6 @@ async def get_students_info(
 ):
     return await get_students_dashboard(db, tutor_id=current_user.id)
 
-from schemas import LessonsSummary, IncomeSummary
 
 async def get_the_nearest_lesson(
     db: AsyncSession,
@@ -184,9 +184,9 @@ async def get_month_sum(
 
     cur_start, cur_end = month_bounds(now.year, now.month)
 
-    stmt = (select(func.coalesce(func.sum(Income.price), Decimal("0.00")))
-    .where(Income.tutor_id == tutor_id)
-    .where(Income.paid_date >= cur_start, Income.paid_date < cur_end))
+    stmt = (select(func.coalesce(func.sum(Payment.price), Decimal("0.00")))
+    .where(Payment.tutor_id == tutor_id)
+    .where(Payment.paid_date >= cur_start, Payment.paid_date < cur_end))
 
     return (await db.execute(stmt)).scalar_one()
 
@@ -201,13 +201,13 @@ async def get_income_dynamic(
     prev_start, prev_end = month_bounds(p_year, p_month)
 
 
-    stmt1 = (select(func.coalesce(func.sum(Income.price), Decimal("0.00")))
-            .where(Income.tutor_id == tutor_id)
-            .where(Income.paid_date >= prev_start, Income.paid_date < prev_end))
+    stmt1 = (select(func.coalesce(func.sum(Payment.price), Decimal("0.00")))
+            .where(Payment.tutor_id == tutor_id)
+            .where(Payment.paid_date >= prev_start, Payment.paid_date < prev_end))
 
-    stmt2 = (select(func.coalesce(func.sum(Income.price), Decimal("0.00")))
-            .where(Income.tutor_id == tutor_id)
-            .where(Income.paid_date >= cur_start, Income.paid_date < cur_end))
+    stmt2 = (select(func.coalesce(func.sum(Payment.price), Decimal("0.00")))
+            .where(Payment.tutor_id == tutor_id)
+            .where(Payment.paid_date >= cur_start, Payment.paid_date < cur_end))
 
     res1 = await db.execute(stmt1)
     prev_income = res1.scalar_one()
@@ -215,16 +215,32 @@ async def get_income_dynamic(
     cur_income = res2.scalar_one()
     return cur_income - prev_income
 
+async def get_revenue_forecast(
+    db: AsyncSession,
+    tutor_id: int
+) -> Decimal:
+    now = datetime.now(timezone.utc)  # or now
 
-@router.get("/incomes", response_model=IncomeSummary)
+    cur_start, cur_end = month_bounds(now.year, now.month)
+
+    stmt = (select(func.coalesce(func.sum(Lesson.price), Decimal("0.00")))
+    .where(Lesson.tutor_id == tutor_id)
+    .where(Lesson.date > cur_start, Lesson.date <= cur_end))
+
+    return (await db.execute(stmt)).scalar_one()
+
+
+@router.get("/incomes", response_model=PaymentSummary)
 async def get_income_dashboard(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     income_dynamic = await get_income_dynamic(db, tutor_id=current_user.id)
     month_sum = await get_month_sum(db, tutor_id=current_user.id)
+    revenue_forecast = await get_revenue_forecast(db, tutor_id=current_user.id)
 
     return {
         "income_dynamic": income_dynamic,
         "month_sum": month_sum,
+        "revenue_forecast": revenue_forecast
     }

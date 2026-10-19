@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import get_current_user, get_password_hash
 from database import get_db
 from models import User
-from schemas import UserResponse, UserUpdate
+from schemas.user import UserResponse, UserUpdate
 import cruds.users as crud
 
 

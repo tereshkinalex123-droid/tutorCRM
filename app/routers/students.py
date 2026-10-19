@@ -4,7 +4,7 @@ from typing import List
 from auth import get_current_user
 from database import get_db
 from models import User
-from schemas import (
+from schemas.student import (
     StudentResponse,
     StudentCreate,
     StudentDetailResponse,

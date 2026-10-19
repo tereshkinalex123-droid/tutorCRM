@@ -1,9 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Lesson, Student, StudentStatus
-from schemas import LessonCreate, LessonUpdate
-
-from datetime import datetime, timedelta
+from schemas.lesson import LessonUpdate, LessonCreate
+from datetime import timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import and_, or_, select, text
 
@@ -63,8 +62,6 @@ async def create_lesson(
     new_start = lesson_in.date
     new_end = lesson_in.date + timedelta(minutes=lesson_in.duration_minutes)
 
-    # 3. Check for overlapping lessons using PostgreSQL intervals
-    # Formula: (Existing_Start < New_End) AND (Existing_End > New_Start)
     existing_end = Lesson.date + (Lesson.duration_minutes * text("INTERVAL '1 minute'"))
 
     stmt_conflict = select(Lesson).where(
@@ -85,7 +82,7 @@ async def create_lesson(
                    f" to {(conflict.date + timedelta(minutes=conflict.duration_minutes)).strftime('%H:%M')}."
         )
 
-    lesson = Lesson(**lesson_in.model_dump())
+    lesson = Lesson(**lesson_in.model_dump(), tutor_id=tutor_id)
     db.add(lesson)
 
     lesson_day = lesson.date.date()

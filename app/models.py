@@ -36,37 +36,27 @@ class TimestampMixin:
         nullable=False,
     )
 
-class PaymentStatus(str, enum.Enum):
-    PENDING = "pending"
-    PAID = "paid"
-    CANCELED = "canceled"
-
 class StudentStatus(str, enum.Enum):
     ACTIVE = "active"
     PAUSED = "paused"
     ARCHIVED = "archived"
     IN_TRIAL = "in_trial"
 
+class LessonType(str, enum.Enum):
+    STUDENT = "student"
+    LEAD = "lead"
+
 class StudentTag(str, enum.Enum):
     INDIVIDUAL = "individual"
     GROUP = "group"
     COURSE = "course"
-    subscription = "subscription"
+    SUBSCRIPTION = "subscription"
     CONSULTATION = "consultation"
-
 
 class HomeworkStatus(str, enum.Enum):
     PENDING = "pending"
     SUBMITTED = "submitted"
     CHECKED = "checked"
-
-
-class TimeCategory(str, enum.Enum):
-    PREPARATION = "preparation"
-    HOMEWORK_CHECKING = "homework_checking"
-    ADMIN = "admin"
-    OTHER = "other"
-    LESSON = "lesson"
 
 
 class TaskPriority(str, enum.Enum):
@@ -89,10 +79,6 @@ class User(BaseModel, TimestampMixin):
         back_populates="tutor",
         cascade="all, delete-orphan",
     )
-    time_entries: Mapped[List["TimeEntry"]] = relationship(
-        back_populates="tutor",
-        cascade="all, delete-orphan",
-    )
     tasks: Mapped[List["Task"]] = relationship(
         back_populates="tutor",
         cascade="all, delete-orphan",
@@ -101,7 +87,11 @@ class User(BaseModel, TimestampMixin):
         back_populates="tutor",
         cascade="all, delete-orphan",
     )
-    incomes: Mapped[List["Income"]] = relationship(
+    payments: Mapped[List["Payment"]] = relationship(
+        back_populates="tutor",
+        cascade="all, delete-orphan",
+    )
+    transactions: Mapped[List["BalanceTransaction"]] = relationship(
         back_populates="tutor",
         cascade="all, delete-orphan",
     )
@@ -118,17 +108,16 @@ class Student(BaseModel, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
     contacts: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-
-    absences: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     date_of_join: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
     date_of_last_study: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     problems: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     subject: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
 
     status: Mapped[StudentStatus] = mapped_column(
         Enum(StudentStatus, name="student_status_name"),
-        default=StudentStatus.IN_TRIAL,
+        default=StudentStatus.ACTIVE,
         nullable=False,
     )
     tag: Mapped[StudentTag] = mapped_column(
@@ -136,8 +125,6 @@ class Student(BaseModel, TimestampMixin):
         default=StudentTag.INDIVIDUAL,
         nullable=False,
     )
-
-    tutor: Mapped["User"] = relationship(back_populates="students")
     lessons: Mapped[List["Lesson"]] = relationship(
         back_populates="student",
         cascade="all, delete-orphan",
@@ -146,11 +133,17 @@ class Student(BaseModel, TimestampMixin):
         back_populates="student",
         cascade="all, delete-orphan",
     )
-
-    incomes: Mapped[List["Income"]] = relationship(
+    payments: Mapped[List["Payment"]] = relationship(
         back_populates="student",
         cascade="all, delete-orphan",
     )
+    transactions: Mapped[List["BalanceTransaction"]] = relationship(
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+
+    tutor: Mapped["User"] = relationship(back_populates="students")
+
 
 class Lesson(BaseModel, TimestampMixin):
     __tablename__ = "lesson"
@@ -168,22 +161,16 @@ class Lesson(BaseModel, TimestampMixin):
     )
 
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
-    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    income: Mapped[Optional["Income"]] = relationship(
-        back_populates="lesson",
-        uselist=False,
+    type: Mapped[LessonType] = mapped_column(
+        Enum(LessonType, name="lesson_type_name"),
+        default=LessonType.STUDENT,
+        nullable=False,
     )
 
-    grade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-
-    __table_args__ = (
-        CheckConstraint("grade >= 1 AND grade <= 10", name="check_valid_grade_range"),
-    )
     student: Mapped["Student"] = relationship(back_populates="lessons")
     tutor: Mapped["User"] = relationship(back_populates="lessons")
 
@@ -191,7 +178,6 @@ class Lesson(BaseModel, TimestampMixin):
         back_populates="lesson",
         uselist=False,
     )
-
 
 class Homework(BaseModel, TimestampMixin):
     __tablename__ = "homework"
@@ -216,37 +202,10 @@ class Homework(BaseModel, TimestampMixin):
         default=HomeworkStatus.PENDING,
         nullable=False,
     )
-    grade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    __table_args__ = (
-        CheckConstraint("grade >= 1 AND grade <= 10", name="check_valid_homework_grade_range"),
-    )
 
     student: Mapped["Student"] = relationship(back_populates="homeworks")
     lesson: Mapped[Optional["Lesson"]] = relationship(back_populates="homework")
-
-
-class TimeEntry(BaseModel, TimestampMixin):
-    __tablename__ = "time_entries"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    tutor_id: Mapped[int] = mapped_column(
-        ForeignKey("user_account.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    category: Mapped[TimeCategory] = mapped_column(
-        Enum(TimeCategory, name="time_category_name"),
-        nullable=False,
-    )
-    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
-    logged_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    tutor: Mapped["User"] = relationship(back_populates="time_entries")
-
 
 class Task(BaseModel, TimestampMixin):
     __tablename__ = "tasks"
@@ -265,35 +224,56 @@ class Task(BaseModel, TimestampMixin):
         default=TaskPriority.MEDIUM,
         nullable=False,
     )
-    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     tutor: Mapped["User"] = relationship(back_populates="tasks")
 
-class Income(BaseModel, TimestampMixin):
-    __tablename__ = "incomes"
+class PaymentStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    PAID = "PAID"
+    FAILED = "FAILED"
+    CANCELED = "CANCELED"
+    REFUNDED = "REFUNDED"    # return money
+
+class PaymentMethod(str, enum.Enum):
+    STRIPE = "STRIPE"
+    CASH = "CASH"
+    BANK_TRANSFER = "BANK_TRANSFER"
+
+class TransactionType(str, enum.Enum):
+    DEPOSIT = "DEPOSIT"
+    LESSON_CHARGE = "LESSON_CHARGE"
+    REFUND = "REFUND"
+    ADJUSTMENT = "ADJUSTMENT" #for manual override
+
+class Payment(BaseModel, TimestampMixin):
+    #now much money tutor has earned
+    __tablename__ = "payments"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    stripe_session_id: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    paid_date: Mapped[datetime] = mapped_column(Date, nullable=True)
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
-    payment_status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus, name="payment_status_name"),
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name="payment_status_enum"),
         default=PaymentStatus.PENDING,
         nullable=False,
-    )
-
-    lesson_id: Mapped[int] = mapped_column(
-        ForeignKey("lesson.id", ondelete="SET NULL"),
-        nullable=False,
         index=True,
     )
-
-    tutor_id: Mapped[int] = mapped_column(
-        ForeignKey("user_account.id", ondelete="CASCADE"),
+    method: Mapped[PaymentMethod] = mapped_column(
+        Enum(PaymentMethod, name="payment_method_enum"),
+        default=PaymentMethod.CASH,
         nullable=False,
-        index=True,
+    )
+
+    stripe_session_id: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True, index=True
+    )
+
+    paid_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     student_id: Mapped[int] = mapped_column(
@@ -301,7 +281,54 @@ class Income(BaseModel, TimestampMixin):
         nullable=False,
         index=True,
     )
+    tutor_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
-    lesson: Mapped["Lesson"] = relationship(back_populates="income")
-    student: Mapped["Student"] = relationship(back_populates="incomes")
-    tutor: Mapped["User"] = relationship(back_populates="incomes")
+    student: Mapped["Student"] = relationship(back_populates="payments")
+    tutor: Mapped["User"] = relationship(back_populates="payments")
+    transactions: Mapped[list["BalanceTransaction"]] = relationship(back_populates="payment")
+
+class BalanceTransaction(BaseModel, TimestampMixin):
+    __tablename__ = "balance_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    type: Mapped[TransactionType] = mapped_column(
+        Enum(TransactionType, name="transaction_type_enum"),
+        nullable=False,
+        index=True,
+    )
+
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    student_id: Mapped[int] = mapped_column(
+        ForeignKey("student_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tutor_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    payment_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("payments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    lesson_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("lesson.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    tutor: Mapped["User"] = relationship(back_populates="transactions")
+    student: Mapped["Student"] = relationship(back_populates="transactions")
+    payment: Mapped[Optional["Payment"]] = relationship(back_populates="transactions")
+    lesson: Mapped[Optional["Lesson"]] = relationship()
