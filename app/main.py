@@ -14,11 +14,13 @@ app = FastAPI()
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(students_router, prefix="/students", tags=["students"])
 app.include_router(users_router, prefix="/users", tags=["users"])
-app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(lessons_router, prefix="/lessons", tags=["lessons"])
 app.include_router(payments_router, prefix="/payments", tags=["payments"])
 app.include_router(leads_router, prefix="/leads", tags=["leads"])
 app.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
+
+app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
+
 
 @app.get("/")
 async def root():
