@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from sqlalchemy.orm import Session
 from auth import router as auth_router
+from sqlalchemy.orm import Session
 from routers.students import router as students_router
 from routers.users import router as users_router
 from routers.lessons import router as lessons_router
@@ -8,6 +8,7 @@ from routers.payments import router as payments_router
 from routers.leads import router as leads_router
 from routers.tasks import router as tasks_router
 from pages.dashboard import router as dashboard_router
+from pages.calendar import router as calendar_router
 import uvicorn
 
 app = FastAPI()
@@ -20,6 +21,7 @@ app.include_router(leads_router, prefix="/leads", tags=["leads"])
 app.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
 
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
+app.include_router(calendar_router, prefix="/calender", tags=["calender"])
 
 
 @app.get("/")

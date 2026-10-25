@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 from models import LessonType
 
+from models import LessonStatus
+
 
 class LessonBase(BaseModel):
     student_id: int
@@ -12,6 +14,7 @@ class LessonBase(BaseModel):
     duration_minutes: int = Field(60, gt=0, le=480)
     topic: str = Field(..., min_length=2, max_length=255)
     type: LessonType = LessonType.STUDENT
+    status: LessonStatus = LessonStatus.SCHEDULED
     price: Decimal = Field(Decimal("0.00"), ge=0)
 
 class LessonCreate(LessonBase):
@@ -34,6 +37,7 @@ class LessonUpdate(BaseModel):
     duration_minutes: Optional[int] = Field(None, gt=0, le=480)
     topic: Optional[str] = Field(None, min_length=2, max_length=255)
     type: Optional[LessonType] = None
+    status: Optional[LessonStatus] = None
     price: Optional[Decimal] = Field(None, ge=0)
 
 class LessonResponse(LessonBase):

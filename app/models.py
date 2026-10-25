@@ -47,6 +47,11 @@ class LessonType(str, enum.Enum):
     STUDENT = "student"
     LEAD = "lead"
 
+class LessonStatus(str, enum.Enum):
+    SCHEDULED = "SCHEDULED"
+    COMPLETED = "COMPLETED"
+    CANCELED = "CANCELED"
+
 class StudentTag(str, enum.Enum):
     INDIVIDUAL = "individual"
     GROUP = "group"
@@ -167,6 +172,12 @@ class Lesson(BaseModel, TimestampMixin):
     type: Mapped[LessonType] = mapped_column(
         Enum(LessonType, name="lesson_type_name"),
         default=LessonType.STUDENT,
+        nullable=False,
+    )
+
+    status: Mapped[LessonStatus] = mapped_column(
+        Enum(LessonStatus, name="lesson_status_name"),
+        default=LessonStatus.SCHEDULED,
         nullable=False,
     )
 
