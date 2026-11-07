@@ -243,7 +243,7 @@ class Task(BaseModel, TimestampMixin):
 class PaymentStatus(str, enum.Enum):
     PENDING = "PENDING"
     PAID = "PAID"
-    FAILED = "FAILED"
+    # FAILED = "FAILED"
     CANCELED = "CANCELED"
     REFUNDED = "REFUNDED"    # return money
 
@@ -258,9 +258,19 @@ class TransactionType(str, enum.Enum):
     REFUND = "REFUND"
     ADJUSTMENT = "ADJUSTMENT" #for manual override
 
+from sqlalchemy import Index, text
+
 class Payment(BaseModel, TimestampMixin):
     #now much money tutor has earned
     __tablename__ = "payments"
+    __table_args__ = (
+        Index(
+            "uq_payment_active_per_lesson",
+            "lesson_id",
+            unique=True,
+            postgresql_where=text("status in ('PENDING', 'PAID')"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
@@ -281,6 +291,11 @@ class Payment(BaseModel, TimestampMixin):
     stripe_session_id: Mapped[Optional[str]] = mapped_column(
         String(255), unique=True, nullable=True, index=True
     )
+    lesson_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("lesson.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     paid_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -299,11 +314,15 @@ class Payment(BaseModel, TimestampMixin):
 
     student: Mapped["Student"] = relationship(back_populates="payments")
     tutor: Mapped["User"] = relationship(back_populates="payments")
-    transactions: Mapped[list["BalanceTransaction"]] = relationship(back_populates="payment")
+
+from sqlalchemy import UniqueConstraint
 
 class BalanceTransaction(BaseModel, TimestampMixin):
     __tablename__ = "balance_transactions"
-
+    __table_args__ = (UniqueConstraint(
+        "payment_id", "type", name="uq_balance_tx_payment_type"
+    ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -313,8 +332,6 @@ class BalanceTransaction(BaseModel, TimestampMixin):
         nullable=False,
         index=True,
     )
-
-    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
     student_id: Mapped[int] = mapped_column(
         ForeignKey("student_account.id", ondelete="CASCADE"),
@@ -326,13 +343,14 @@ class BalanceTransaction(BaseModel, TimestampMixin):
         nullable=False,
         index=True,
     )
-
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
     payment_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("payments.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    lesson_id: Mapped[Optional[int]] = mapped_column(
+
+    lesson_id: Mapped[int | None] = mapped_column(
         ForeignKey("lesson.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
@@ -340,5 +358,3 @@ class BalanceTransaction(BaseModel, TimestampMixin):
 
     tutor: Mapped["User"] = relationship(back_populates="transactions")
     student: Mapped["Student"] = relationship(back_populates="transactions")
-    payment: Mapped[Optional["Payment"]] = relationship(back_populates="transactions")
-    lesson: Mapped[Optional["Lesson"]] = relationship()

@@ -31,7 +31,7 @@ class PaymentCreate(PaymentBase):
 
 class PaymentUpdate(BaseModel):
     paid_date: Optional[datetime] = Field(None, description="Format: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
-    price: Optional[Decimal] = None
+    amount: Optional[Decimal] = None
     status: Optional[PaymentStatus] = None
     method: Optional[PaymentMethod] = None
     stripe_session_id: Optional[str] = Field(None, min_length=2, max_length=255)

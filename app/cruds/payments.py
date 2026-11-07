@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from models import (
     BalanceTransaction,
@@ -26,7 +27,7 @@ async def get_all_payments(
     return list(result.scalars().all())
 
 
-async def get_payment(
+async def get_payment_via_id(
     db: AsyncSession, payment_id: int, tutor_id: int
 ) -> Payment | None:
     stmt = select(Payment).where(
@@ -35,42 +36,29 @@ async def get_payment(
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
+async def get_payment_via_stripe_id(
+    db: AsyncSession, stripe_session_id
+) -> Payment | None:
+    res = await db.execute(
+        select(Payment)
+        .where(Payment.stripe_session_id == stripe_session_id)
+    )
+    return res.scalar_one_or_none()
+
+from ..transactions import money_service
 
 async def create_payment(
     db: AsyncSession, payment_in: PaymentCreate, current_user: User
 ) -> Payment:
-    stmt_student = select(Student).where(
-        Student.id == payment_in.student_id, Student.tutor_id == current_user.id
-    )
-    result_student = await db.execute(stmt_student)
-    student = result_student.scalar_one_or_none()
-
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found for this tutor",
-        )
 
     payment = Payment(**payment_in.model_dump(), tutor_id=current_user.id)
     db.add(payment)
     await db.flush()
+    await db.refresh(payment)
 
     if payment.status == PaymentStatus.PAID:
-        student.balance += payment.price
-        current_user.balance += payment.price
+        await money_service.change_balances(db, amount=payment.amount, student_id=payment.student_id, tutor_id=current_user.id)
 
-        tx = BalanceTransaction(
-            amount=payment.price,
-            type=TransactionType.DEPOSIT,
-            description=f"Payment received via {payment.method.value}",
-            student_id=student.id,
-            tutor_id=current_user.id,
-            payment_id=payment.id,
-        )
-        db.add(tx)
-
-    await db.commit()
-    await db.refresh(payment)
     return payment
 
 

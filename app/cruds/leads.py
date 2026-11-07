@@ -70,36 +70,9 @@ async def create_lead(
 async def convert_lead_to_student(
     db: AsyncSession,
     lead: Student,
-    current_user: User,
-    initial_package_price: Decimal = Decimal("0.00"),
 ) -> Student:
     lead.status = StudentStatus.ACTIVE
     lead.date_of_join = datetime.now(timezone.utc).date()
-
-    if initial_package_price > Decimal("0.00"):
-        payment = Payment(
-            price=initial_package_price,
-            status=PaymentStatus.PAID,
-            method=PaymentMethod.CASH,
-            student_id=lead.id,
-            tutor_id=current_user.id,
-            paid_date=datetime.now(timezone.utc),
-        )
-        db.add(payment)
-        await db.flush()
-
-        lead.balance += initial_package_price
-        current_user.balance += initial_package_price
-
-        tx = BalanceTransaction(
-            amount=initial_package_price,
-            type=TransactionType.DEPOSIT,
-            description="Initial onboarding lesson package",
-            student_id=lead.id,
-            tutor_id=current_user.id,
-            payment_id=payment.id,
-        )
-        db.add(tx)
 
     await db.commit()
     await db.refresh(lead)

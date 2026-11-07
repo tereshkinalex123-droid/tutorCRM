@@ -5,9 +5,9 @@ from sqlalchemy.orm import selectinload
 from auth import get_current_user
 from config import settings
 from database import get_db
-
 from typing import Optional
 from sqlalchemy import select
+from sqlalchemy.ext import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import (
     BalanceTransaction,
@@ -16,10 +16,12 @@ from models import (
     Student,
     TransactionType,
     User,
-    Lesson
+    Lesson,
+    PaymentMethod
 )
 from schemas.payment import PaymentCreate, PaymentUpdate, PaymentLinkResponse, PaymentResponse
 import cruds.payments as crud
+from cruds.students import get_student
 
 router = APIRouter()
 stripe.api_key = settings.stripe_secret_key
@@ -43,11 +45,34 @@ async def create_checkout_session(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    if lesson.is_paid:
-        raise HTTPException(status_code=400, detail="This lesson is already paid for")
-
     if lesson.price <= 0:
         raise HTTPException(status_code=400, detail="Lesson price must be greater than zero to charge")
+
+    stmt_relevant_payment = select(Payment).where(Payment.lesson_id == lesson.id,
+                                                  Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PENDING]))
+    res_relevant_payment = await db.execute(stmt_relevant_payment)
+    relevant_payment = res_relevant_payment.scalar_one_or_none()
+    if relevant_payment:
+        if relevant_payment.status == PaymentStatus.PAID:
+            raise HTTPException(status_code=400, detail="Lesson is paid")
+        elif relevant_payment.status == PaymentStatus.PENDING:
+            # дописать логику с истекшей ссылкой
+            raise HTTPException(status_code=409, detail="Payment already exists")
+    else:
+        payment = Payment(
+            tutor_id=current_user.id,
+            student_id=lesson.student_id,
+            lesson_id=lesson.id,
+            amount=lesson.price,
+            status=PaymentStatus.PENDING,
+            method=PaymentMethod.STRIPE
+        )
+        db.add(payment)
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(409, "Payment is creating ")
 
     amount_in_cents = int(lesson.price * 100)
 
@@ -72,28 +97,13 @@ async def create_checkout_session(
                 "lesson_id": str(lesson.id),
                 "tutor_id": str(current_user.id),
                 "student_id": str(lesson.student_id),
+                "payment_id": str(payment.id),
             },
             success_url=f"{settings.frontend_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{settings.frontend_url}/payment-cancelled",
         )
 
-        stmt_income = select(Payment).where(Payment.lesson_id == lesson.id)
-        res_income = await db.execute(stmt_income)
-        income = res_income.scalar_one_or_none()
-
-        if not income:
-            income = Payment(
-                tutor_id=current_user.id,
-                student_id=lesson.student_id,
-                lesson_id=lesson.id,
-                price=lesson.price,
-                payment_status=PaymentStatus.PENDING,
-                stripe_session_id=checkout_session.id,
-            )
-            db.add(income)
-        else:
-            income.stripe_session_id = checkout_session.id
-            income.payment_status = PaymentStatus.PENDING
+        payment.stripe_session_id = checkout_session.id
 
         await db.commit()
 
@@ -103,15 +113,20 @@ async def create_checkout_session(
             amount=lesson.price,
         )
 
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+from cruds.payments import get_payment_via_stripe_id
+from transactions import MoneyService, get_money_service
+import logging
+logger = logging.getLogger(__name__)
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(None, alias="Stripe-Signature"),
     db: AsyncSession = Depends(get_db),
+    money_service: MoneyService = Depends(get_money_service)
 ):
     payload_body = await request.body()
 
@@ -119,33 +134,24 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             payload_body, stripe_signature, settings.stripe_webhook_secret
         )
-    except (ValueError, stripe.error.SignatureVerificationError):
+    except (ValueError, stripe.SignatureVerificationError):
         raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature")
 
     if event["type"] == "checkout.session.completed":
         session_data = event["data"]["object"]
+        # if session_data["payment_status"] == "paid":
         stripe_session_id = session_data["id"]
 
-        res = await db.execute(
-            select(Payment)
-            .where(Payment.stripe_session_id == stripe_session_id)
-            .options(selectinload(Payment.lesson))
-        )
-        income = res.scalar_one_or_none()
-
-        if income:
-            income.payment_status = PaymentStatus.PAID
-            income.paid_date = datetime.now(timezone.utc)
-
-            if income.lesson:
-                income.lesson.is_paid = True
-
-            res_user = await db.execute(select(User).where(User.id == income.tutor_id))
-            tutor = res_user.scalar_one_or_none()
-            if tutor:
-                tutor.balance += income.price
-
-            await db.commit()
+        payment = await get_payment_via_stripe_id(db, stripe_session_id) #зменить на поиск по айди
+        if not payment:
+            logger.warning("Payment not found")
+            return {"status": "ignored"}
+        try:
+            await money_service.mark_paid(payment.id)
+        except ValueError as e :
+            logger.warning(str(e))
+            return {"status": "ignored"}
+        await db.commit()
 
     return {"status": "success"}
 
@@ -180,27 +186,32 @@ async def create_payment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    student = get_student(db, student_id=payment_in.student_id, tutor_id=current_user.id)
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found for this tutor",
+        )
+
     return await crud.create_payment(
-        db, payment_in=payment_in, current_user=current_user
-    )
+            db, payment_in=payment_in, current_user=current_user
+        )
 
-
-@router.patch("/{payment_id}", response_model=PaymentResponse)
-async def update_payment(
-    payment_id: int,
-    payment_in: PaymentUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    payment = await crud.get_payment(
-        db, payment_id=payment_id, tutor_id=current_user.id
-    )
-    if not payment:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
-    return await crud.update_payment(
-        db, payment=payment, payment_in=payment_in, current_user=current_user
-    )
-
+# @router.patch("/{payment_id}", response_model=PaymentResponse)
+# async def update_payment(
+#     payment_id: int,
+#     payment_in: PaymentUpdate,
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     payment = await crud.get_payment(
+#         db, payment_id=payment_id, tutor_id=current_user.id
+#     )
+#     if not payment:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+#     return await crud.update_payment(
+#         db, payment=payment, payment_in=payment_in, current_user=current_user
+#     )
 
 @router.delete("/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_payment(
