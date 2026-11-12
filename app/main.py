@@ -1,15 +1,13 @@
 from fastapi import FastAPI
-from auth import router as auth_router
-from sqlalchemy.orm import Session
-from routers.students import router as students_router
-from routers.users import router as users_router
-from routers.lessons import router as lessons_router
-from routers.payments import router as payments_router
-from routers.leads import router as leads_router
-from routers.tasks import router as tasks_router
-from pages.dashboard import router as dashboard_router
-from pages.calendar import router as calendar_router
-import uvicorn
+from .auth import router as auth_router
+from .routers.students import router as students_router
+from .routers.users import router as users_router
+from .routers.lessons import router as lessons_router
+from .routers.payments import router as payments_router
+from .routers.leads import router as leads_router
+from .routers.tasks import router as tasks_router
+from .pages.dashboard import router as dashboard_router
+from .pages.calendar import router as calendar_router
 
 app = FastAPI()
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -26,7 +24,4 @@ app.include_router(calendar_router, prefix="/calender", tags=["calender"])
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    return {"message": "Hello Worldsds"}

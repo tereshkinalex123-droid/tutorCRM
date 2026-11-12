@@ -2,11 +2,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_current_user
-from database import get_db
-from models import User
-from schemas.task import TaskCreate, TaskResponse, TaskUpdate
-import cruds.tasks as crud
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import User
+from ..schemas.task import TaskCreate, TaskResponse, TaskUpdate
+from ..cruds import tasks as crud
 
 router = APIRouter()
 

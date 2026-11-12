@@ -19,4 +19,5 @@ dependencies = [
     "sqlalchemy>=2.0.52",
     "stripe>=15.6.1",
     "uvicorn>=0.52.4",
+    "sqlalchemy[asyncio]",
 ]

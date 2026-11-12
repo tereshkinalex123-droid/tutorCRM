@@ -3,12 +3,12 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
-from models import PaymentStatus, PaymentMethod
+from ..models import PaymentStatus, PaymentMethod
 
 
 class PaymentBase(BaseModel):
     student_id: int
-    paid_date: datetime = Field(..., description="Format: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
+    paid_date: Optional[datetime] = Field(None, description="Format: YYYY-MM-DD HH:MM (e.g., 2026-10-01 15:30)")
     amount: Decimal = Field(Decimal("0.00"), ge=0)
     status: PaymentStatus = PaymentStatus.PENDING
     method: PaymentMethod = PaymentMethod.CASH
@@ -46,9 +46,12 @@ class PaymentResponse(PaymentBase):
     model_config = ConfigDict(from_attributes=True)
 
     @field_serializer("paid_date")
-    def format_date(self, dt: datetime) -> str:
-        return dt.strftime("%Y-%m-%d %H:%M")
-
+    def format_date(self, dt: datetime | None) -> str | None:
+        if dt:
+            return dt.strftime("%Y-%m-%d %H:%M")
+        else:
+            return None 
+        
 class PaymentLinkResponse(BaseModel):
     checkout_url: str
     session_id: str

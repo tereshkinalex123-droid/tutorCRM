@@ -1,11 +1,10 @@
-# app/cruds/payments.py
 from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import (
+from ..models import (
     BalanceTransaction,
     Payment,
     PaymentStatus,
@@ -13,7 +12,8 @@ from models import (
     TransactionType,
     User,
 )
-from schemas.payment import PaymentCreate, PaymentUpdate
+from ..schemas.payment import PaymentCreate, PaymentUpdate
+from ..transactions import get_money_service
 
 
 async def get_all_payments(
@@ -22,7 +22,7 @@ async def get_all_payments(
     stmt = select(Payment).where(Payment.tutor_id == tutor_id)
     if student_id:
         stmt = stmt.where(Payment.student_id == student_id)
-    stmt = stmt.order_by(Payment.paid_date.desc().nulls_last())
+    stmt = stmt.order_by(Payment.created_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -45,7 +45,6 @@ async def get_payment_via_stripe_id(
     )
     return res.scalar_one_or_none()
 
-from ..transactions import money_service
 
 async def create_payment(
     db: AsyncSession, payment_in: PaymentCreate, current_user: User
@@ -54,11 +53,11 @@ async def create_payment(
     payment = Payment(**payment_in.model_dump(), tutor_id=current_user.id)
     db.add(payment)
     await db.flush()
-    await db.refresh(payment)
 
     if payment.status == PaymentStatus.PAID:
-        await money_service.change_balances(db, amount=payment.amount, student_id=payment.student_id, tutor_id=current_user.id)
+        await get_money_service.mark_paid(db, payment_id=payment.id)
 
+    await db.commit()
     return payment
 
 

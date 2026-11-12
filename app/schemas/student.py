@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
-from models import StudentStatus, StudentTag
+from ..models import StudentStatus, StudentTag
 from .lesson import LessonResponse
 from .homework import HomeworkResponse
 

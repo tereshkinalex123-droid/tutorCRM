@@ -3,9 +3,7 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
-from models import LessonType
-
-from models import LessonStatus
+from ..models import LessonType, LessonStatus
 
 
 class LessonBase(BaseModel):
