@@ -23,13 +23,14 @@ from ..models import (
 )
 from ..schemas.payment import (
     PaymentCreate,
-    PaymentUpdate,
+    # PaymentUpdate,
     PaymentLinkResponse,
     PaymentResponse
 )
 from ..cruds import payments as crud
 from ..cruds.students import get_student
-from ..cruds.payments import get_payment_via_stripe_id
+from ..cruds.payments import get_payment_via_stripe_id, get_payment_via_lesson_id
+from ..cruds.lessons import  get_lesson
 from ..transactions import MoneyService, get_money_service
 
 logger = logging.getLogger(__name__)
@@ -62,14 +63,20 @@ async def create_checkout_session(
     stmt_relevant_payment = select(Payment).where(Payment.lesson_id == lesson.id,
                                                   Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PENDING]))
     res_relevant_payment = await db.execute(stmt_relevant_payment)
-    relevant_payment = res_relevant_payment.scalar_one_or_none()
-    if relevant_payment:
-        if relevant_payment.status == PaymentStatus.PAID:
+    payment = res_relevant_payment.scalar_one_or_none()
+    if payment:
+        if payment.status == PaymentStatus.PAID:
             raise HTTPException(status_code=400, detail="Lesson is paid")
-        elif relevant_payment.status == PaymentStatus.PENDING:
+        elif payment.status == PaymentStatus.PENDING:
+            if payment.method == PaymentMethod.STRIPE:
+                raise HTTPException(status_code=409, detail="Payment already exists")
+            payment.method = PaymentMethod.STRIPE
             # дописать логику с истекшей ссылкой
-            raise HTTPException(status_code=409, detail="Payment already exists")
     else:
+        # stmt_payment = select(Payment).where(Payment.lesson_id == lesson.id)
+        # res_payment = await db.execute(stmt_payment)
+        # payment = res_payment.scalar
+        # if payment
         payment = Payment(
             tutor_id=current_user.id,
             student_id=lesson.student_id,
@@ -79,6 +86,7 @@ async def create_checkout_session(
             method=PaymentMethod.STRIPE
         )
         db.add(payment)
+
         try:
             await db.flush()
         except IntegrityError:
@@ -125,7 +133,6 @@ async def create_checkout_session(
 
     except stripe.StripeError as e:
         raise HTTPException(status_code=500, detail=str(e))
-    # return {"detail": "Checkout Session has been created"}
     
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def stripe_webhook(
@@ -197,16 +204,41 @@ async def create_payment(
     payment_in: PaymentCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    money_service : MoneyService = Depends(get_money_service),
 ):
-    student = get_student(db, student_id=payment_in.student_id, tutor_id=current_user.id)
+    student = await get_student(db, student_id=payment_in.student_id, tutor_id=current_user.id)
     if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student not found for this tutor",
+            )
+    
+    if payment_in.lesson_id is not None:
+        lesson = await get_lesson(db, lesson_id=payment_in.lesson_id, tutor_id=current_user.id)
+        if not lesson:
+            raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Lesson not found for these tutor and student",
+                    )
+        payment = await get_payment_via_lesson_id(db, lesson_id=payment_in.lesson_id, tutor_id=current_user.id)
+        if payment:
+            raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Payment for this lesson already exists",
+                    )
+        if payment_in.student_id != lesson.student_id:
+            raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Student do not match ",
+                                )
+    if payment_in.method == PaymentMethod.STRIPE:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found for this tutor",
-        )
-
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Cannot create a payment with STRIPE method",
+                            )
+    
     return await crud.create_payment(
-            db, payment_in=payment_in, current_user=current_user
+            db, payment_in=payment_in, current_user=current_user, money_service=money_service
         )
 
 # @router.patch("/{payment_id}", response_model=PaymentResponse)

@@ -9,7 +9,7 @@ engine = create_async_engine(
 async_session = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
-    expire_on_commit=False,
+    expire_on_commit=False, # атрибуты после коммита не устаревают 
 )
 
 async def get_db() -> AsyncSession:
