@@ -3,7 +3,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Lesson, Payment, Student, User, PaymentMethod, PaymentStatus, BalanceTransaction
+from app.models import Lesson, Payment, Student, User, PaymentMethod, PaymentStatus, BalanceTransaction, TransactionType
 
 
 async def create_tutor_student(
@@ -81,11 +81,52 @@ async def get_balances(
 async def get_deposits(
     db: AsyncSession,
     payment_id: int,
-) -> list[BalanceTransaction]:
+) -> list[BalanceTransaction] | None:
     stmt = (
         select(BalanceTransaction)
         .where(BalanceTransaction.payment_id == payment_id)
         .order_by(BalanceTransaction.created_at.desc())
     )
     result = await db.execute(stmt)
-    return list(result.scalars().all())
+    return list(result.scalars().all()) if result else None
+
+async def add_payment(
+    db: AsyncSession,
+    tutor_id: int,
+    student_id: int,
+    status: PaymentStatus,
+    lesson_id: int | None = None,
+    amount: Decimal = Decimal("100.00"),
+) -> int:
+    payment = Payment(
+        tutor_id=tutor_id,
+        student_id=student_id,
+        amount=amount,
+        status=status,
+        method=PaymentMethod.CASH,
+        lesson_id=lesson_id,
+    )
+    db.add(payment)
+    await db.commit()          # при нарушении ограничения исключение вылетает именно здесь
+    return payment.id
+
+
+async def add_balance_tx(
+    db: AsyncSession,
+    tutor_id: int,
+    student_id: int,
+    tx_type: TransactionType,
+    payment_id: int | None,
+    amount: Decimal = Decimal("100.00"),
+) -> None:
+    db.add(
+        BalanceTransaction(
+            type=tx_type,
+            amount=amount,
+            description="test transaction",
+            student_id=student_id,
+            tutor_id=tutor_id,
+            payment_id=payment_id,
+        )
+    )
+    await db.commit()
