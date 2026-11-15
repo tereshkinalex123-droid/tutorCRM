@@ -73,5 +73,6 @@ class MoneyService:
         return True
 
 
-async def get_money_service(db: AsyncSession = Depends(get_db)) -> MoneyService:
+async def get_money_service(db: AsyncSession) -> MoneyService:
     return MoneyService(db)
+# = Depends(get_db)
