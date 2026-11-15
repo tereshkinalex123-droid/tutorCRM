@@ -18,8 +18,6 @@ TEST_DB_URL = URL.create(
     database=TEST_DB_NAME,
 )
 
-
-
 @pytest.fixture()
 async def session_factory():
     engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)

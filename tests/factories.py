@@ -68,7 +68,7 @@ async def get_balances(
     db: AsyncSession,
     tutor_id: int,
     student_id: int,
-) -> dict:
+) -> set:
     st_stmt = select(Student.balance).where(Student.id == student_id)
     us_stmt = select(User.balance).where(User.id == tutor_id)
     st_result = await db.execute(st_stmt)
@@ -76,11 +76,7 @@ async def get_balances(
     us_result = await db.execute(us_stmt)
     tutor_balance = us_result.scalar_one_or_none()
 
-
-    return {
-        "tutor_balance": tutor_balance,
-        "student_balance": student_balance,
-    }
+    return (tutor_balance, student_balance)
 
 async def get_deposits(
     db: AsyncSession,

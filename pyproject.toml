@@ -19,11 +19,6 @@ dependencies = [
     "sqlalchemy>=2.0.52",
     "stripe>=15.6.1",
     "uvicorn>=0.52.4",
-<<<<<<< Updated upstream
-=======
-    "sqlalchemy[asyncio]",
-    "pytest-asyncio>=1.5.0",
->>>>>>> Stashed changes
 ]
 
 [dependency-groups]

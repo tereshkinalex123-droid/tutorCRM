@@ -3,10 +3,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_current_user
-from database import get_db
-from models import StudentStatus, User
-from schemas.student import StudentCreate, StudentResponse
+from app.auth import get_current_user
+from app.database import get_db
+from app.models import StudentStatus, User
+from app.schemas.student import StudentCreate, StudentResponse
 import cruds.leads as crud
 
 router = APIRouter()

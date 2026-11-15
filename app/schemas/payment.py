@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
-from models import PaymentStatus, PaymentMethod
+from ..models import PaymentStatus, PaymentMethod
 
 
 class PaymentBase(BaseModel):

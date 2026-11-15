@@ -3,7 +3,8 @@ from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import Lesson, Payment, PaymentStatus, Student, StudentStatus
+
+from ..models import Lesson, Payment, PaymentStatus, Student, StudentStatus
 
 
 RED_ZONE_AFTER_DAYS = 14

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import (
+from ..models import (
     BalanceTransaction,
     Payment,
     PaymentStatus,
@@ -13,7 +13,7 @@ from models import (
     TransactionType,
     User,
 )
-from schemas.payment import PaymentCreate, PaymentUpdate
+from ..schemas.payment import PaymentCreate, PaymentUpdate
 
 
 async def get_all_payments(

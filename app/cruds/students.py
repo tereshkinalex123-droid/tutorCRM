@@ -1,8 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from models import Student
-from schemas.student import StudentCreate, StudentUpdate
+from ..models import Student
+from ..schemas.student import StudentCreate, StudentUpdate
 
 
 async def get_students(db: AsyncSession, tutor_id: int) -> list[Student]:

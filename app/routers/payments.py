@@ -2,14 +2,14 @@ from datetime import datetime, timezone
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status, Query
 from sqlalchemy.orm import selectinload
-from auth import get_current_user
-from config import settings
-from database import get_db
+from app.auth import get_current_user
+from app.config import settings
+from app.database import get_db
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import (
+from app.models import (
     BalanceTransaction,
     Payment,
     PaymentStatus,
@@ -19,9 +19,9 @@ from models import (
     Lesson,
     PaymentMethod
 )
-from schemas.payment import PaymentCreate, PaymentUpdate, PaymentLinkResponse, PaymentResponse
+from app.schemas.payment import PaymentCreate, PaymentUpdate, PaymentLinkResponse, PaymentResponse
 import cruds.payments as crud
-from cruds.students import get_student
+from app.cruds.students import get_student
 
 router = APIRouter()
 stripe.api_key = settings.stripe_secret_key
@@ -116,8 +116,8 @@ async def create_checkout_session(
     except stripe.StripeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-from cruds.payments import get_payment_via_stripe_id
-from transactions import MoneyService, get_money_service
+from app.cruds.payments import get_payment_via_stripe_id
+from app.transactions import MoneyService, get_money_service
 import logging
 logger = logging.getLogger(__name__)
 

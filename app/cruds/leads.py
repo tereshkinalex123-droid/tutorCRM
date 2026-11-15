@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import (
+from ..models import (
     BalanceTransaction,
     Payment,
     PaymentMethod,
@@ -14,7 +14,7 @@ from models import (
     TransactionType,
     User,
 )
-from schemas.student import StudentCreate, StudentUpdate
+from ..schemas.student import StudentCreate, StudentUpdate
 
 LEAD_STATUSES = [
     StudentStatus.LEAD_BEFORE,

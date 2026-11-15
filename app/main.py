@@ -1,12 +1,12 @@
 from fastapi import FastAPI
-from auth import router as auth_router
+from app.auth import router as auth_router
 from sqlalchemy.orm import Session
-from routers.students import router as students_router
-from routers.users import router as users_router
-from routers.lessons import router as lessons_router
-from routers.payments import router as payments_router
-from routers.leads import router as leads_router
-from routers.tasks import router as tasks_router
+from app.routers.students import router as students_router
+from app.routers.users import router as users_router
+from app.routers.lessons import router as lessons_router
+from app.routers.payments import router as payments_router
+from app.routers.leads import router as leads_router
+from app.routers.tasks import router as tasks_router
 from pages.dashboard import router as dashboard_router
 from pages.calendar import router as calendar_router
 import uvicorn
@@ -19,7 +19,6 @@ app.include_router(lessons_router, prefix="/lessons", tags=["lessons"])
 app.include_router(payments_router, prefix="/payments", tags=["payments"])
 app.include_router(leads_router, prefix="/leads", tags=["leads"])
 app.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
-
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(calendar_router, prefix="/calender", tags=["calender"])
 
@@ -27,6 +26,3 @@ app.include_router(calendar_router, prefix="/calender", tags=["calender"])
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)

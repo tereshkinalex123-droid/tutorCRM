@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
-from models import HomeworkStatus
+from ..models import HomeworkStatus
 
 
 class HomeworkBase(BaseModel):

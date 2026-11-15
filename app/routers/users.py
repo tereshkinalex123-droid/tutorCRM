@@ -3,10 +3,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_current_user, get_password_hash
-from database import get_db
-from models import User
-from schemas.user import UserResponse, UserUpdate
+from app.auth import get_current_user, get_password_hash
+from app.database import get_db
+from app.models import User
+from app.schemas.user import UserResponse, UserUpdate
 import cruds.users as crud
 
 

@@ -1,10 +1,11 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import Lesson, Student, StudentStatus
-from schemas.lesson import LessonUpdate, LessonCreate
 from datetime import timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import and_, or_, select, text
+
+from ..models import Lesson, Student, StudentStatus
+from ..schemas.lesson import LessonUpdate, LessonCreate
 
 
 async def get_all_lessons(
