@@ -5,16 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import (
-    BalanceTransaction,
-    Payment,
-    PaymentMethod,
-    PaymentStatus,
     Student,
     StudentStatus,
-    TransactionType,
-    User,
 )
-from ..schemas.student import StudentCreate, StudentUpdate
+from ..schemas.student import StudentCreate
+
 
 LEAD_STATUSES = [
     StudentStatus.LEAD_BEFORE,

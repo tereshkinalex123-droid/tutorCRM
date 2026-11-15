@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
-from app.models import TaskPriority
+from ..models import TaskPriority
 
 class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)

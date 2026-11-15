@@ -5,7 +5,6 @@ from typing import List, Optional
 
 from sqlalchemy import (
     Boolean,
-    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -15,6 +14,10 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    Index, 
+    text,
+    UniqueConstraint,
+
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -258,8 +261,6 @@ class TransactionType(str, enum.Enum):
     REFUND = "REFUND"
     ADJUSTMENT = "ADJUSTMENT" #for manual override
 
-from sqlalchemy import Index, text
-
 class Payment(BaseModel, TimestampMixin):
     #now much money tutor has earned
     __tablename__ = "payments"
@@ -314,8 +315,6 @@ class Payment(BaseModel, TimestampMixin):
 
     student: Mapped["Student"] = relationship(back_populates="payments")
     tutor: Mapped["User"] = relationship(back_populates="payments")
-
-from sqlalchemy import UniqueConstraint
 
 class BalanceTransaction(BaseModel, TimestampMixin):
     __tablename__ = "balance_transactions"

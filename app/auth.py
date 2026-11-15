@@ -7,11 +7,11 @@ from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import get_db
-from app.models import User
-from app.config import settings
-from app.schemas.user import Token, UserCreate, UserWithToken
-import cruds.users as crud
+from .database import get_db
+from .models import User
+from .config import settings
+from .schemas.user import Token, UserCreate, UserWithToken
+from .cruds import users as crud
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

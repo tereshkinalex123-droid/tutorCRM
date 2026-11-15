@@ -1,9 +1,8 @@
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import and_, or_, select, text
-
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Lesson, Student, StudentStatus
 from ..schemas.lesson import LessonUpdate, LessonCreate
 

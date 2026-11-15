@@ -4,9 +4,9 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user
-from app.database import get_db
-from app.models import User
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import User
 from ..schemas.dashboard import DashboardResponse
 from ..cruds import dashboard as crud
 

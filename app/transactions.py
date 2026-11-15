@@ -1,15 +1,14 @@
-from fastapi.params import Depends
-
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
+from fastapi.params import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
-from app.schemas.payment import PaymentStatus
-from app.cruds.students import get_student
-from app.cruds.users import get_user
-from app.cruds.lessons import get_lesson
-from app.database import get_db
-from app.models import BalanceTransaction, Payment, User, Student, TransactionType
+from .cruds.students import get_student
+from .cruds.users import get_user
+from .cruds.lessons import get_lesson
+from .models import BalanceTransaction, Payment, User, Student, TransactionType
+from .schemas.payment import PaymentStatus
+from .database import get_db
 
 class MoneyService:
 
@@ -72,6 +71,7 @@ class MoneyService:
         )
         self._db.add(tx)
         return True
+
 
 async def get_money_service(db: AsyncSession = Depends(get_db)) -> MoneyService:
     return MoneyService(db)
