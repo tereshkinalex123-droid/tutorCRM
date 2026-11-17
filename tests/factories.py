@@ -3,8 +3,10 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.transactions import MoneyService
 from app.models import Lesson, Payment, Student, User, PaymentMethod, PaymentStatus, BalanceTransaction, TransactionType
 
+AMOUNT = Decimal("100.00")
 
 async def create_tutor_student(
     db: AsyncSession, login: str = "test_tutor"
@@ -130,3 +132,9 @@ async def add_balance_tx(
         )
     )
     await db.commit()
+
+async def pay(session_factory, payment_id: int) -> bool:
+    async with session_factory() as db:
+        result = await MoneyService(db).mark_paid(payment_id)
+        await db.commit()
+        return result

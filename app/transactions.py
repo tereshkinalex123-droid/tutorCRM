@@ -39,7 +39,6 @@ class MoneyService:
         tutor.balance += amount
         await db.commit()
 
-
     async def mark_paid(self, payment_id: int):
         result = await self._db.execute(
             select(Payment)
@@ -53,7 +52,7 @@ class MoneyService:
             return False
         if payment.status != PaymentStatus.PENDING:
             raise ValueError(f"Cannot mark {payment.status.value} payment as paid")
-
+        
         payment.status = PaymentStatus.PAID
         payment.paid_date = datetime.now(timezone.utc)
 

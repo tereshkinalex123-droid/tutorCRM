@@ -1,17 +1,8 @@
 import pytest 
-from sqlalchemy.exc import NoResultFound
 from decimal import Decimal
-from app.transactions import MoneyService
-from factories import create_pending_payment, create_tutor_student, get_balances, get_deposits 
+from factories import create_pending_payment, create_tutor_student, get_balances, get_deposits, pay, AMOUNT 
 from app.models import Payment, PaymentStatus, TransactionType
 
-AMOUNT = Decimal("100.00")
-
-async def pay(session_factory, payment_id: int) -> bool:
-    async with session_factory() as db:
-        result = await MoneyService(db).mark_paid(payment_id)
-        await db.commit()
-        return result
 
 async def test_mark_paid_credits_balances(session_factory):
     async with session_factory() as db:
