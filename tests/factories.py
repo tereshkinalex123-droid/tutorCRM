@@ -137,3 +137,16 @@ async def pay(session_factory, payment_id: int) -> bool:
         result = await MoneyService(db).mark_paid(payment_id)
         await db.commit()
         return result
+
+async def add_student(db: AsyncSession, tutor_id: int, name: str = "Second Student") -> int:
+    student = Student(tutor_id=tutor_id, name=name)
+    db.add(student)
+    await db.commit()
+    return student.id
+
+
+async def payments_of_lesson(db: AsyncSession, lesson_id: int) -> list[Payment]:
+    result = await db.execute(
+        select(Payment).where(Payment.lesson_id == lesson_id).order_by(Payment.id)
+    )
+    return list(result.scalars().all())

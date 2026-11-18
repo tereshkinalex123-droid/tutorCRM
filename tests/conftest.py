@@ -43,14 +43,14 @@ async def session_factory():
     await engine.dispose()
 
 @pytest.fixture
-async def tutor_student(session_factory):
+async def seeded(session_factory):
     async with session_factory() as db:
         tutor_id, student_id = await create_tutor_student(db)
     return tutor_id, student_id
 
 @pytest.fixture
-async def client(session_factory, tutor_student):
-    tutor_id, _ = tutor_student
+async def client(session_factory, seeded):
+    tutor_id, _ = seeded
 
     async def override_get_db():
         async with session_factory() as session:
