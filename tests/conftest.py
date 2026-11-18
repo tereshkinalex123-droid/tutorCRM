@@ -13,7 +13,6 @@ from app.auth import get_current_user
 
 from factories import  create_tutor_student
 
-
 TEST_DB_NAME = "crm_test"
 
 TEST_DB_URL = URL.create(
