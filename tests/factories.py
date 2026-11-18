@@ -23,7 +23,6 @@ async def create_tutor_student(
     await db.commit()
     return tutor_id, student_id
 
-
 async def create_pending_payment(
     db: AsyncSession,
     tutor_id: int,
@@ -109,7 +108,7 @@ async def add_payment(
         lesson_id=lesson_id,
     )
     db.add(payment)
-    await db.commit()          # при нарушении ограничения исключение вылетает именно здесь
+    await db.commit()         
     return payment.id
 
 

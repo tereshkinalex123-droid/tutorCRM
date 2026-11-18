@@ -134,7 +134,7 @@ async def create_checkout_session(
     except stripe.StripeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.post("/webhook", status_code=status.HTTP_200_OK)
+@router.post("/webhook", status_code=status.HTTP_200_OK, response_model=dict)
 async def stripe_webhook(
     request: Request,
     stripe_signature: str = Header(None, alias="Stripe-Signature"),

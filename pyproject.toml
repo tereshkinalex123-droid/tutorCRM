@@ -20,6 +20,7 @@ dependencies = [
     "stripe>=15.6.1",
     "uvicorn>=0.52.4",
     "sqlalchemy[asyncio]",
+    "simplejson>=4.3.0",
 ]
 
 [dependency-groups]

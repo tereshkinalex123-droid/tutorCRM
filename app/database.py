@@ -15,3 +15,4 @@ async_session = async_sessionmaker(
 async def get_db() -> AsyncSession:
     async with async_session() as session:
         yield session
+        # session.close()

@@ -17,10 +17,8 @@ app.include_router(lessons_router, prefix="/lessons", tags=["lessons"])
 app.include_router(payments_router, prefix="/payments", tags=["payments"])
 app.include_router(leads_router, prefix="/leads", tags=["leads"])
 app.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
-
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(calendar_router, prefix="/calender", tags=["calender"])
-
 
 @app.get("/")
 async def root():
