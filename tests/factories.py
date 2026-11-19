@@ -150,3 +150,12 @@ async def payments_of_lesson(db: AsyncSession, lesson_id: int) -> list[Payment]:
         select(Payment).where(Payment.lesson_id == lesson_id).order_by(Payment.id)
     )
     return list(result.scalars().all())
+
+# async def create_tutor(
+#     db: AsyncSession, login: str = "test_tutor"
+# ) -> User:
+#     tutor = User(name="Test Tutor", login=login, hashed_password="not-a-real-hash")
+#     db.add(tutor)
+#     await db.flush()              
+#     await db.commit()
+#     return tutor

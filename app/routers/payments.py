@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 stripe.api_key = settings.stripe_secret_key
 
-
 @router.post("/lessons/{lesson_id}/payment-link", response_model=PaymentLinkResponse)
 async def create_checkout_session(
     lesson_id: int,
