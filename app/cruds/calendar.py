@@ -4,8 +4,8 @@ from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import Lesson, Student, Task
-from schemas.calendar import CalendarLessonEvent, CalendarTaskEvent
+from ..models import Lesson, Student, Task
+from ..schemas.calendar import CalendarLessonEvent, CalendarTaskEvent
 
 
 async def get_calendar_events(

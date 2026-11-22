@@ -4,11 +4,11 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_current_user
-from database import get_db
-from models import User
-from schemas.dashboard import DashboardResponse
-import cruds.dashboard as crud
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import User
+from ..schemas.dashboard import DashboardResponse
+from ..cruds import dashboard as crud
 
 router = APIRouter()
 

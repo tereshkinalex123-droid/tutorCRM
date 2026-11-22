@@ -1,15 +1,12 @@
-# app/pages/calendar.py (or app/routers/calendar.py)
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from auth import get_current_user
-from database import get_db
-from models import User
-from schemas.calendar import CalendarFeedResponse
-import cruds.calendar as crud
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import User
+from ..schemas.calendar import CalendarFeedResponse
+from ..cruds import calendar as crud
 
 router = APIRouter()
 

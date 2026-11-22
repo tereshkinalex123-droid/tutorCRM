@@ -1,9 +1,5 @@
-.venv/
-
-__pycache__/
-*.py[cod]
-
+.venv
+.git
+__pycache__
+stripe.exe
 .env
-
-.git/
-.gitignore

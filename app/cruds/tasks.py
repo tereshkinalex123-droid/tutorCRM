@@ -2,8 +2,8 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Task
-from schemas.task import TaskCreate, TaskUpdate
+from ..models import Task
+from ..schemas.task import TaskCreate, TaskUpdate
 
 
 async def get_all_tasks(

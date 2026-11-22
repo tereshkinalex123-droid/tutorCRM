@@ -1,11 +1,10 @@
-# app/cruds/payments.py
 from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models import (
+from ..models import (
     BalanceTransaction,
     Payment,
     PaymentStatus,
@@ -13,8 +12,8 @@ from models import (
     TransactionType,
     User,
 )
-from schemas.payment import PaymentCreate, PaymentUpdate
-
+from ..schemas.payment import PaymentCreate #PaymentUpdate
+from ..transactions import get_money_service, MoneyService
 
 async def get_all_payments(
     db: AsyncSession, tutor_id: int, student_id: Optional[int] = None
@@ -22,10 +21,20 @@ async def get_all_payments(
     stmt = select(Payment).where(Payment.tutor_id == tutor_id)
     if student_id:
         stmt = stmt.where(Payment.student_id == student_id)
-    stmt = stmt.order_by(Payment.paid_date.desc().nulls_last())
+    stmt = stmt.order_by(Payment.created_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
+async def get_payment_via_lesson_id(
+    db: AsyncSession, lesson_id: int, tutor_id: int
+) -> Payment | None:
+    stmt = select(Payment).where(
+        Payment.tutor_id == tutor_id,
+        Payment.lesson_id == lesson_id,
+        Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.PAID])
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
 async def get_payment_via_id(
     db: AsyncSession, payment_id: int, tutor_id: int
@@ -45,22 +54,23 @@ async def get_payment_via_stripe_id(
     )
     return res.scalar_one_or_none()
 
-from ..transactions import money_service
-
 async def create_payment(
-    db: AsyncSession, payment_in: PaymentCreate, current_user: User
+    db: AsyncSession, payment_in: PaymentCreate, current_user: User, money_service: MoneyService
 ) -> Payment:
 
     payment = Payment(**payment_in.model_dump(), tutor_id=current_user.id)
+    intention = payment.status
+    payment.status = PaymentStatus.PENDING
+    
     db.add(payment)
     await db.flush()
+
+    if intention == PaymentStatus.PAID:
+        await money_service.mark_paid(payment_id=payment.id)
+
+    await db.commit()
     await db.refresh(payment)
-
-    if payment.status == PaymentStatus.PAID:
-        await money_service.change_balances(db, amount=payment.amount, student_id=payment.student_id, tutor_id=current_user.id)
-
     return payment
-
 
 async def update_payment(
     db: AsyncSession, payment: Payment, payment_in: PaymentUpdate, current_user: User
