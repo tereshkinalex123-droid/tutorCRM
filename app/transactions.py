@@ -10,6 +10,8 @@ from .models import BalanceTransaction, Payment, User, Student, TransactionType
 from .schemas.payment import PaymentStatus
 from .database import get_db
 
+from .exceptions import PaymentNotPendingError
+
 class MoneyService:
 
     def __init__(self, db: AsyncSession):
@@ -51,7 +53,7 @@ class MoneyService:
         if payment.status == PaymentStatus.PAID:
             return False
         if payment.status != PaymentStatus.PENDING:
-            raise ValueError(f"Cannot mark {payment.status.value} payment as paid")
+            raise PaymentNotPendingError(payment.status.value)
         
         payment.status = PaymentStatus.PAID
         payment.paid_date = datetime.now(timezone.utc)

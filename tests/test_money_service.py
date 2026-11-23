@@ -2,7 +2,7 @@ import pytest
 from decimal import Decimal
 from factories import create_pending_payment, create_tutor_student, get_balances, get_deposits, pay, AMOUNT 
 from app.models import Payment, PaymentStatus, TransactionType
-
+from app.exceptions import PaymentNotPendingError
 
 async def test_mark_paid_credits_balances(session_factory):
     async with session_factory() as db:
@@ -47,7 +47,7 @@ async def test_mark_paid_canceled_payment_raises(session_factory):
         payment.status = PaymentStatus.CANCELED
         await db.commit()
 
-    with pytest.raises(ValueError): # падает, если не было исключения этого типа  
+    with pytest.raises(PaymentNotPendingError): # падает, если не было исключения этого типа  
         await pay(session_factory, payment_id)
 
     async with session_factory() as db:

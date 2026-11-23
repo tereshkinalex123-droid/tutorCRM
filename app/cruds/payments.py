@@ -1,8 +1,6 @@
 from typing import Optional
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from ..models import (
     BalanceTransaction,
@@ -13,7 +11,7 @@ from ..models import (
     User,
 )
 from ..schemas.payment import PaymentCreate #PaymentUpdate
-from ..transactions import get_money_service, MoneyService
+from ..transactions import MoneyService
 
 async def get_all_payments(
     db: AsyncSession, tutor_id: int, student_id: Optional[int] = None

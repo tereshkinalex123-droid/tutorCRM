@@ -1,5 +1,6 @@
 from factories import create_pending_payment, create_tutor_student, pay, AMOUNT, get_deposits, get_balances
 import asyncio
+from app.exceptions import PaymentNotPendingError
 
 async def test_race_mark_paid(session_factory):
     async with session_factory() as db:

@@ -77,7 +77,6 @@ async def test_duplicate_webhook_credits_only_once(client, session_factory, seed
         assert await get_balances(db, tutor_id, student_id) == (AMOUNT, AMOUNT)
         assert len(await get_deposits(db, payment_id)) == 1
 
-
 async def test_unknown_session_is_ignored(client, session_factory, seeded, stripe_event):
     tutor_id, student_id = seeded
     payment_id = await stripe_payment(session_factory, tutor_id, student_id)
