@@ -128,19 +128,21 @@ async def create_checkout_session(
             success_url=f"{settings.frontend_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{settings.frontend_url}/payment-cancelled",
         )
-
-        payment.stripe_session_id = checkout_session.id
-
-        await db.commit()
-
-        return PaymentLinkResponse(
-            checkout_url=checkout_session.url,
-            session_id=checkout_session.id,
-            amount=payment.amount,
-        )
-
     except stripe.StripeError as e:
         raise PaymentStripeError(str(e)) from e
+
+    if checkout_session.url is None:
+        raise PaymentStripeError("Stripe did not return a checkout URL")
+
+    payment.stripe_session_id = checkout_session.id
+
+    await db.commit()
+
+    return PaymentLinkResponse(
+        checkout_url=checkout_session.url,
+        session_id=checkout_session.id,
+        amount=payment.amount,
+    )
     
 @router.post("/webhook", status_code=status.HTTP_200_OK, response_model=dict)
 async def stripe_webhook(
@@ -234,22 +236,6 @@ async def create_payment(
     return await crud.create_payment(
             db, payment_in=payment_in, current_user=current_user, money_service=money_service
         )
-
-# @router.patch("/{payment_id}", response_model=PaymentResponse)
-# async def update_payment(
-#     payment_id: int,
-#     payment_in: PaymentUpdate,
-#     current_user: User = Depends(get_current_user),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     payment = await crud.get_payment(
-#         db, payment_id=payment_id, tutor_id=current_user.id
-#     )
-#     if not payment:
-#         raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
-#     return await crud.update_payment(
-#         db, payment=payment, payment_in=payment_in, current_user=current_user
-#     )
 
 @router.delete("/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_payment(

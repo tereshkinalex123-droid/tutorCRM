@@ -68,6 +68,16 @@ class StudentNotFoundError(StudentError):
         super().__init__("Student not found for this tutor")
         self.student_id = student_id
 
+# Тьюторы
+
+class TutorError(DomainError):
+    pass
+
+class TutorNotFoundError(TutorError):
+    def __init__(self, tutor_id: int | None = None):
+        super().__init__("Tutor not found")
+        self.tutor_id = tutor_id
+
 # Баланс
 
 class BalanceError(DomainError):

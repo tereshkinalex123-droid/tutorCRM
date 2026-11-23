@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from fastapi.params import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-
+from typing import Annotated
 from .cruds.students import get_student
 from .cruds.users import get_user
 from .cruds.lessons import get_lesson
@@ -10,7 +10,7 @@ from .models import BalanceTransaction, Payment, User, Student, TransactionType
 from .schemas.payment import PaymentStatus
 from .database import get_db
 
-from .exceptions import PaymentNotPendingError
+from .exceptions import PaymentNotPendingError, StudentNotFoundError, LessonNotFoundError, TutorNotFoundError
 
 class MoneyService:
 
@@ -19,9 +19,11 @@ class MoneyService:
 
     async def lesson_passed(self, lesson_id: int, student_id: int,  tutor_id: int):
         lesson = await get_lesson(self._db, lesson_id, tutor_id)
-        # tutor = await get_user(db, user_id=tutor_id)
+        if not lesson:
+            raise LessonNotFoundError(lesson_id)
         student = await get_student(self._db, student_id,  tutor_id)
-
+        if not student:
+            raise StudentNotFoundError(student_id)
         student.balance -= lesson.price
 
         tx = BalanceTransaction(
@@ -35,7 +37,12 @@ class MoneyService:
 
     async def change_balances(self, db: AsyncSession, amount:int, student_id: int,  tutor_id: int):
         tutor = await get_user(db, user_id=tutor_id)
-        student = await get_student(db, student_id, tutor_id)
+        if not tutor:
+            raise TutorNotFoundError(tutor_id)
+
+        student = await get_student(self._db, student_id,  tutor_id)
+        if not student:
+            raise StudentNotFoundError(student_id)
 
         student.balance += amount
         tutor.balance += amount
@@ -73,6 +80,7 @@ class MoneyService:
         self._db.add(tx)
         return True
 
+DBSession = Annotated[AsyncSession, Depends(get_db)]
 
-async def get_money_service(db: AsyncSession = Depends(get_db)) -> MoneyService:
+async def get_money_service(db: DBSession) -> MoneyService:
     return MoneyService(db)

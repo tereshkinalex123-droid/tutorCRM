@@ -64,8 +64,7 @@ async def update_user(
     return await crud.update_user(
         db,
         user=user,
-        name=user_in.name,
-        hashed_password=hashed,
+        user_in=user_in,
     )
 
 

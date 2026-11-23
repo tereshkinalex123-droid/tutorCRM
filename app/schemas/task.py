@@ -32,7 +32,7 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     priority: Optional[TaskPriority] = None
     date: Optional[datetime] = None
-    due_date: Optional[date] = None
+    due_date: Optional[datetime] = None
     is_completed: Optional[bool] = None
 
 class TaskResponse(TaskBase):

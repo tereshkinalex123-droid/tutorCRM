@@ -7,6 +7,8 @@ class UserBase(BaseModel):
     login: str = Field(..., min_length=3, max_length=50)
 
 class UserResponse(UserBase):
+    # model_config = ConfigDict(from_attributes=True)
+    
     id: int
     balance: Decimal
     created_at: datetime

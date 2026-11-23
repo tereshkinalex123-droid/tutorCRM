@@ -48,8 +48,6 @@ async def convert_lead(
     return await crud.convert_lead_to_student(
         db,
         lead=lead,
-        current_user=current_user,
-        initial_package_price=initial_package_price,
     )
 
 

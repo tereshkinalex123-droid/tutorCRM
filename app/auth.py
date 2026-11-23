@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .database import get_db
 from .models import User
 from .config import settings
-from .schemas.user import Token, UserCreate, UserWithToken
+from .schemas.user import Token, UserCreate, UserWithToken, UserResponse
 from .cruds import users as crud
 
 
@@ -39,12 +39,12 @@ async def authenticate_user(
 def create_access_token(
     login: str
 ) -> str:
-    to_encode = {"sub": login}
+    to_encode: dict[str, str | int] = {"sub": login}
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
 
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": int(expire.timestamp())})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 async def get_current_user(
@@ -116,6 +116,6 @@ async def register(
     access_token = create_access_token(login=new_user.login)
 
     return UserWithToken(
-        user=new_user,
+        user=UserResponse.model_validate(new_user),
         token=Token(access_token=access_token, token_type="bearer"),
     )
