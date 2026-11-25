@@ -19,8 +19,8 @@ from sqlalchemy import (
     UniqueConstraint,
 
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 class BaseModel(DeclarativeBase):
     pass
@@ -81,6 +81,21 @@ class User(BaseModel, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
     balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+
+    timezone: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        default="UTC",
+        server_default="UTC",
+    )
+
+    @validates("timezone")
+    def validate_timezone(self, key: str, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(f"Некорректный часовой пояс: {value}") from exc
+        return value
 
     students: Mapped[List["Student"]] = relationship(
         back_populates="tutor",
@@ -151,6 +166,8 @@ class Student(BaseModel, TimestampMixin):
 
     tutor: Mapped["User"] = relationship(back_populates="students")
 
+from sqlalchemy.dialects.postgresql import ExcludeConstraint, Range, TSTZRANGE
+from sqlalchemy import CheckConstraint, func, Computed, FetchedValue
 
 class Lesson(BaseModel, TimestampMixin):
     __tablename__ = "lesson"
@@ -168,8 +185,24 @@ class Lesson(BaseModel, TimestampMixin):
     )
 
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
-    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    during: Mapped[Range[datetime]] = mapped_column(
+        TSTZRANGE(),
+        Computed("tstzrange(starts_at, ends_at, '[)')", persisted=True),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint("ends_at > starts_at", name="lesson_end_after_start"),
+        ExcludeConstraint(
+            ("tutor_id", "="), ("during", "&&"),
+            name="no_overlapping_lessons", using="gist",
+            where=text("status <> 'CANCELED'"),
+        ),
+    )
+
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
 
     type: Mapped[LessonType] = mapped_column(
