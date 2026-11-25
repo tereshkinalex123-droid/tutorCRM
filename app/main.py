@@ -38,6 +38,8 @@ ERROR_STATUS: dict[type[exc.DomainError], int] = {
     exc.PaymentInvalidAmountError: 400,
     exc.PaymentMethodNotAllowedError: 400,
     exc.PaymentStripeError: 502,
+    exc.LessonOverlapError: 409,
+    exc.LessonTimeError: 422,
 }
 
 def _make_handler(status_code: int):

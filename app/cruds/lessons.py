@@ -14,7 +14,6 @@ async def get_all_lessons(
         select(Lesson)
         .join(Student, Student.id == Lesson.student_id)
         .where(Student.tutor_id == tutor_id)
-        .order_by(Lesson.date.desc())
     )
     return list(result.scalars().all())
 
@@ -39,74 +38,48 @@ async def get_lesson(
     )
     return result.scalar_one_or_none()
 
+from app.exceptions import LessonOverlapError, LessonTimeError, StudentNotFoundError
+from ..cruds.students import get_student
+from sqlalchemy.exc import IntegrityError
+from services.students import change_student_data
+from zoneinfo import ZoneInfo
+from ..models import User
 
-async def create_lesson(
-    db: AsyncSession,
-    lesson_in: LessonCreate,
-    tutor_id: int
-) -> Lesson:
+async def _flush_or_raise(db: AsyncSession) -> None:
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        msg = str(exc.orig)
+        if "no_overlapping_lessons" in msg:
+            raise LessonOverlapError() from exc
+        if "lesson_end_after_start" in msg:
+            raise LessonTimeError() from exc
+        raise
 
-    stmt_student = select(Student).where(
-        Student.id == lesson_in.student_id,
-        Student.tutor_id == tutor_id,
-    )
-    res_student = await db.execute(stmt_student)
-    student = res_student.scalar_one_or_none()
+async def create_lesson(db: AsyncSession, lesson_in: LessonCreate, tutor: User) -> Lesson:
+    student = await get_student(db, student_id=lesson_in.student_id, tutor_id=tutor.id)
+    if student is None:
+        raise StudentNotFoundError(lesson_in.student_id)
 
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found for this tutor"
-        )
-
-    new_start = lesson_in.date
-    new_end = lesson_in.date + timedelta(minutes=lesson_in.duration_minutes)
-
-    existing_end = Lesson.date + (Lesson.duration_minutes * text("INTERVAL '1 minute'"))
-
-    stmt_conflict = select(Lesson).where(
-        Lesson.tutor_id == tutor_id,
-        and_(
-            Lesson.date < new_end,
-            existing_end > new_start,
-        )
-    )
-    res_conflict = await db.execute(stmt_conflict)
-    conflict = res_conflict.scalar_one_or_none()
-
-    if conflict:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Scheduling conflict: You already have a lesson booked"
-                   f" from {conflict.date.strftime('%H:%M')}"
-                   f" to {(conflict.date + timedelta(minutes=conflict.duration_minutes)).strftime('%H:%M')}."
-        )
-
-    lesson = Lesson(**lesson_in.model_dump(), tutor_id=tutor_id)
+    lesson = Lesson(**lesson_in.model_dump(), tutor_id=tutor.id)
     db.add(lesson)
 
-    lesson_day = lesson.date.date()
-    if student.date_of_last_study is None or lesson_day > student.date_of_last_study:
-        student.date_of_last_study = lesson_day
+    lesson_day = lesson_in.starts_at.astimezone(ZoneInfo(tutor.timezone)).date()
+    changes = change_student_data(lesson_day, student.date_of_last_study, student.status)
+    for key, val in changes.items():
+        setattr(student, key, val)   # чтобы без коммита
 
-    if student.status == StudentStatus.LEAD_BEFORE:
-        student.status = StudentStatus.LEAD_APPOINTED
-
-    elif student.status == StudentStatus.ARCHIVED:
-        student.status = StudentStatus.ACTIVE
-
-    await db.commit()
-    await db.refresh(lesson)
+    await _flush_or_raise(db)
     return lesson
 
-async def update_lesson(
-    db: AsyncSession, lesson: Lesson, lesson_in: LessonUpdate
-) -> Lesson:
-    update_data = lesson_in.model_dump(exclude_unset=True)
-    for key, val in update_data.items():
+async def update_lesson(db: AsyncSession, lesson: Lesson, lesson_in: LessonUpdate) -> Lesson:
+    for key, val in lesson_in.model_dump(exclude_unset=True).items():
         setattr(lesson, key, val)
-    await db.commit()
-    await db.refresh(lesson)
+
+    if lesson.starts_at >= lesson.ends_at:      
+        raise LessonTimeError()
+
+    await _flush_or_raise(db)
     return lesson
 
 

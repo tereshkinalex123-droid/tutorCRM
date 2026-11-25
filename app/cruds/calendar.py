@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
-from sqlalchemy import or_, select, text
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..models import Lesson, Student, Task
+from ..models import Lesson, Task
 from ..schemas.calendar import CalendarLessonEvent, CalendarTaskEvent
 
 
@@ -14,17 +14,15 @@ async def get_calendar_events(
     start_date: datetime,
     end_date: datetime,
 ) -> tuple[List[CalendarLessonEvent], List[CalendarTaskEvent]]:
-    lesson_end_expr = Lesson.date + (Lesson.duration_minutes * text("INTERVAL '1 minute'"))
-
     stmt_lessons = (
         select(Lesson)
         .options(selectinload(Lesson.student))
         .where(
             Lesson.tutor_id == tutor_id,
-            Lesson.date < end_date,
-            lesson_end_expr > start_date,
+            Lesson.starts_at < end_date,
+            Lesson.ends_at > start_date,
         )
-        .order_by(Lesson.date.asc())
+        .order_by(Lesson.starts_at.asc())
     )
     result_lessons = await db.execute(stmt_lessons)
     raw_lessons = result_lessons.scalars().all()
@@ -35,12 +33,12 @@ async def get_calendar_events(
             title=f"{l.topic} ({l.student.name})",
             student_id=l.student_id,
             student_name=l.student.name,
-            start=l.date,
-            end=l.date + timedelta(minutes=l.duration_minutes),
-            duration_minutes=l.duration_minutes,
+            start=l.starts_at,
+            end=l.ends_at,
+            duration_minutes=int((l.ends_at - l.starts_at).total_seconds() // 60),
             price=l.price,
             type=l.type.value,
-            status= l.status,
+            status=l.status,
         )
         for l in raw_lessons
     ]

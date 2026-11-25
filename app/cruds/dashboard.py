@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 from typing import Any, Dict, List, Tuple
 from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,7 @@ def week_bounds(now: datetime) -> Tuple[datetime, datetime]:
     return start, end
 
 
-async def get_students_summary(db: AsyncSession, tutor_id: int, now: datetime) -> Dict[str, Any]:
+async def get_students_summary(db: AsyncSession, tutor_id: int, now: datetime, tz_name: str) -> Dict[str, Any]:
     cur_start, cur_end = month_bounds(now.year, now.month)
     p_year, p_month = prev_month(now.year, now.month)
     prev_start, prev_end = month_bounds(p_year, p_month)
@@ -38,22 +39,23 @@ async def get_students_summary(db: AsyncSession, tutor_id: int, now: datetime) -
     stmt_curr = (
         select(func.count(distinct(Lesson.student_id)))
         .join(Student, Student.id == Lesson.student_id)
-        .where(Student.tutor_id == tutor_id, Lesson.date >= cur_start, Lesson.date < cur_end)
+        .where(Student.tutor_id == tutor_id, Lesson.starts_at >= cur_start, Lesson.starts_at < cur_end)
     )
     current = (await db.execute(stmt_curr)).scalar_one()
 
     stmt_prev = (
         select(func.count(distinct(Lesson.student_id)))
         .join(Student, Student.id == Lesson.student_id)
-        .where(Student.tutor_id == tutor_id, Lesson.date >= prev_start, Lesson.date < prev_end)
+        .where(Student.tutor_id == tutor_id, Lesson.starts_at >= prev_start, Lesson.starts_at < prev_end)
     )
     previous = (await db.execute(stmt_prev)).scalar_one()
 
     delta = current - previous
     delta_pct = round((delta / previous) * 100, 1) if previous else None
 
-    # Red zone calculation
-    cutoff = (now - timedelta(days=RED_ZONE_AFTER_DAYS)).date()
+    today = now.astimezone(ZoneInfo(tz_name)).date()
+    cutoff = today - timedelta(days=RED_ZONE_AFTER_DAYS)
+
     red_stmt = (
         select(func.count(Student.id))
         .where(
@@ -77,8 +79,8 @@ async def get_students_summary(db: AsyncSession, tutor_id: int, now: datetime) -
 async def get_lessons_summary(db: AsyncSession, tutor_id: int, now: datetime) -> Dict[str, Any]:
     stmt_nearest = (
         select(Lesson)
-        .where(Lesson.tutor_id == tutor_id, Lesson.date >= now)
-        .order_by(Lesson.date.asc())
+        .where(Lesson.tutor_id == tutor_id, Lesson.ends_at > now)
+        .order_by(Lesson.starts_at.asc())
         .limit(1)
     )
     nearest = (await db.execute(stmt_nearest)).scalar_one_or_none()
@@ -87,7 +89,7 @@ async def get_lessons_summary(db: AsyncSession, tutor_id: int, now: datetime) ->
     stmt_week = (
         select(func.count())
         .select_from(Lesson)
-        .where(Lesson.tutor_id == tutor_id, Lesson.date >= start, Lesson.date < end)
+        .where(Lesson.tutor_id == tutor_id, Lesson.starts_at >= start, Lesson.starts_at < end)
     )
     this_week = (await db.execute(stmt_week)).scalar_one()
 
@@ -128,12 +130,11 @@ async def get_income_summary(db: AsyncSession, tutor_id: int, now: datetime) -> 
         select(func.coalesce(func.sum(Lesson.price), Decimal("0.00")))
         .where(
             Lesson.tutor_id == tutor_id,
-            Lesson.date >= now,
-            Lesson.date < cur_end,
+            Lesson.starts_at >= now,
+            Lesson.starts_at < cur_end,
         )
     )
     forecast = (await db.execute(stmt_forecast)).scalar_one()
-
     return {
         "month_sum": cur_income,
         "income_dynamic": cur_income - prev_income,
@@ -146,8 +147,9 @@ async def get_debtors_summary(
     tutor_id: int,
     overdue_days_threshold: int,
     debt_threshold: Decimal,
+    tz_name: str,
 ) -> List[Dict[str, Any]]:
-    today = date.today()
+    today = datetime.now(ZoneInfo(tz_name)).date()
     cutoff_date = today - timedelta(days=overdue_days_threshold)
     neg_threshold = -abs(debt_threshold)
     high_urgency = neg_threshold * Decimal("1.5")

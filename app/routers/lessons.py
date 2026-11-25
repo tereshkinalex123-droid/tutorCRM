@@ -37,6 +37,7 @@ async def get_lesson(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lesson not found")
     return lesson
 
+from ..exceptions import LessonNotFoundError
 
 @router.post("/", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)
 async def create_lesson(
@@ -44,10 +45,10 @@ async def create_lesson(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    try:
-        return await crud.create_lesson(db, lesson_in=lesson_in, tutor_id=current_user.id)
-    except ValueError as e:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e))
+    lesson = await crud.create_lesson(db, lesson_in, tutor=current_user)
+    await db.commit()
+    await db.refresh(lesson)
+    return LessonResponse.from_model(lesson, current_user.timezone)
 
 
 @router.patch("/{lesson_id}", response_model=LessonResponse)
@@ -57,11 +58,13 @@ async def update_lesson(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    lesson = await crud.get_lesson(db, lesson_id=lesson_id, tutor_id=current_user.id)
-    if not lesson:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lesson not found")
-    return await crud.update_lesson(db, lesson=lesson, lesson_in=lesson_in)
-
+    lesson = await crud.get_lesson(db, lesson_id, tutor_id=current_user.id)
+    if lesson is None:
+        raise LessonNotFoundError()
+    lesson = await crud.update_lesson(db, lesson, lesson_in)
+    await db.commit()
+    await db.refresh(lesson)
+    return LessonResponse.from_model(lesson, current_user.timezone)
 
 @router.delete("/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_lesson(

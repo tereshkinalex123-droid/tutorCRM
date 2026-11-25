@@ -49,6 +49,10 @@ class PaymentWebhookMismatchError(PaymentError):
 class LessonError(DomainError):
     pass
 
+class LessonTimeError(LessonError):
+    def __init__(self):
+        super().__init__("Lesson start must be before end")
+        
 class LessonNotFoundError(LessonError):
     def __init__(self, lesson_id: int | None = None):
         super().__init__("Lesson not found")
@@ -57,6 +61,10 @@ class LessonNotFoundError(LessonError):
 class LessonAlreadyPaidError(LessonError):
     def __init__(self):
         super().__init__("Lesson is paid")
+
+class LessonOverlapError(LessonError):
+    def __init__(self):
+        super().__init__("Lesson time overlaps with an existing lesson")
 
 # Студенты
 
