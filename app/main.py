@@ -40,6 +40,8 @@ ERROR_STATUS: dict[type[exc.DomainError], int] = {
     exc.PaymentStripeError: 502,
     exc.LessonOverlapError: 409,
     exc.LessonTimeError: 422,
+    exc.LessonAlreadyCompletedError: 409,
+    exc.LessonCanceledError: 409
 }
 
 def _make_handler(status_code: int):

@@ -9,32 +9,39 @@ from .cruds.lessons import get_lesson
 from .models import BalanceTransaction, Payment, User, Student, TransactionType
 from .schemas.payment import PaymentStatus
 from .database import get_db
-
-from .exceptions import PaymentNotPendingError, StudentNotFoundError, LessonNotFoundError, TutorNotFoundError
+from .models import LessonStatus
+from .exceptions import PaymentNotPendingError, StudentNotFoundError, LessonNotFoundError, TutorNotFoundError, LessonAlreadyCompletedError
 
 class MoneyService:
 
     def __init__(self, db: AsyncSession):
         self._db = db
 
-    async def lesson_passed(self, lesson_id: int, student_id: int,  tutor_id: int):
-        lesson = await get_lesson(self._db, lesson_id, tutor_id)
-        if not lesson:
-            raise LessonNotFoundError(lesson_id)
-        student = await get_student(self._db, student_id,  tutor_id)
-        if not student:
-            raise StudentNotFoundError(student_id)
-        student.balance -= lesson.price
+async def lesson_passed(self, lesson_id: int, tutor_id: int) -> None:
+    lesson = await get_lesson_for_update(self._db, lesson_id, tutor_id)  # FOR UPDATE + populate_existing
+    if not lesson:
+        raise LessonNotFoundError(lesson_id)
+    if lesson.status == LessonStatus.COMPLETED:
+        raise LessonAlreadyCompletedError(lesson_id)
+    if lesson.status == LessonStatus.CANCELED:
+        raise LessonCanceledError(lesson_id)
 
-        tx = BalanceTransaction(
-            amount=lesson.price,
-            type=TransactionType.LESSON_CHARGE,
-            student_id=student_id,
-            tutor_id=tutor_id,
-        )
-        self._db.add(tx)
-        await self._db.commit()
-
+    lesson.status = LessonStatus.COMPLETED
+    await self._db.execute(
+        update(Student)
+        .where(Student.id == lesson.student_id)
+        .values(balance=Student.balance - lesson.price)
+    )
+    self._db.add(BalanceTransaction(
+        amount=lesson.price,
+        type=TransactionType.LESSON_CHARGE,
+        student_id=lesson.student_id,
+        tutor_id=tutor_id,
+        lesson_id=lesson.id,
+        description=f"Lesson charge: {lesson.topic}",
+    ))
+    await self._db.flush()
+    
     async def change_balances(self, db: AsyncSession, amount:int, student_id: int,  tutor_id: int):
         tutor = await get_user(db, user_id=tutor_id)
         if not tutor:

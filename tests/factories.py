@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.transactions import MoneyService
 from app.models import Lesson, Payment, Student, User, PaymentMethod, PaymentStatus, BalanceTransaction, TransactionType
 
+BASE_START = datetime(2026, 11, 26, 21, 35, 0, tzinfo=timezone.utc)
+BASE_END = datetime(2026, 11, 26, 22, 35, 0, tzinfo=timezone.utc)
 AMOUNT = Decimal("100.00")
 
 async def create_tutor_student(
@@ -45,19 +47,21 @@ async def create_pending_payment(
     await db.commit()
     return payment_id
 
-
 async def create_lesson(
     db: AsyncSession,
     tutor_id: int,
     student_id: int,
     price: Decimal = Decimal("100.00"),
+    starts_at: datetime = BASE_START,
+    ends_at: datetime = BASE_END
 ) -> int:
     lesson = Lesson(
         tutor_id=tutor_id,
         student_id=student_id,
         price=price,          
         topic="Algebra",
-        date=datetime.now(timezone.utc),
+        starts_at=starts_at,
+        ends_at=ends_at
     )
     db.add(lesson)
     await db.flush()
@@ -131,6 +135,36 @@ async def add_balance_tx(
         )
     )
     await db.commit()
+
+from app.schemas.lesson import LessonCreate
+from app.cruds.lessons import create_lesson as create_lesson_with_exc 
+from app.exceptions import LessonOverlapError
+
+async def add_lesson(session_factory, seeded, barrier) -> bool:
+    tutor_id, student_id = seeded
+    lesson_in = LessonCreate(
+        student_id=student_id,
+        topic="Algebra",
+        price=AMOUNT,
+        starts_at=BASE_START,
+        ends_at=BASE_END,
+    )
+    async with session_factory() as db:
+        tutor = await db.get(User, tutor_id)
+        await barrier.wait()              
+        try:
+            await create_lesson_with_exc(db, lesson_in, tutor)
+            await db.commit()
+            return True
+        except LessonOverlapError:
+            return False
+
+async def get_lessons(db, tutor_id, student_id) -> list[Lesson]:
+    stmt = select(Lesson).where(
+        Lesson.tutor_id == tutor_id,
+        Lesson.student_id == student_id,
+    )
+    return list((await db.execute(stmt)).scalars().all())
 
 async def pay(session_factory, payment_id: int) -> bool:
     async with session_factory() as db:

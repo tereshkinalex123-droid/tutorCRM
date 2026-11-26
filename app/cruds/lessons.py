@@ -35,6 +35,7 @@ async def get_lesson(
         select(Lesson)
         .join(Student, Student.id == Lesson.student_id)
         .where(Lesson.id == lesson_id, Student.tutor_id == tutor_id)
+        .with_for_update()
     )
     return result.scalar_one_or_none()
 

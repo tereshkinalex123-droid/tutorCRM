@@ -62,6 +62,14 @@ class LessonAlreadyPaidError(LessonError):
     def __init__(self):
         super().__init__("Lesson is paid")
 
+class LessonAlreadyCompletedError(LessonError):
+    def __init__(self):
+        super().__init__("Lesson is completed")
+
+class LessonCanceledError(LessonError):
+    def __init__(self):
+        super().__init__("Lesson is canceled")
+
 class LessonOverlapError(LessonError):
     def __init__(self):
         super().__init__("Lesson time overlaps with an existing lesson")

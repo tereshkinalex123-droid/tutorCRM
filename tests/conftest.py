@@ -11,7 +11,7 @@ from app.database import get_db
 from app.main import app
 from app.auth import get_current_user
 
-from factories import  create_tutor_student
+from tests.factories import  create_tutor_student
 
 TEST_DB_NAME = "crm_test"
 
@@ -34,6 +34,7 @@ async def session_factory():
 
     async with engine.begin() as conn:
         await conn.run_sync(BaseModel.metadata.drop_all)
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
         await conn.run_sync(BaseModel.metadata.create_all)
 
     yield async_sessionmaker(engine, expire_on_commit=False)

@@ -351,9 +351,16 @@ class Payment(BaseModel, TimestampMixin):
 
 class BalanceTransaction(BaseModel, TimestampMixin):
     __tablename__ = "balance_transactions"
-    __table_args__ = (UniqueConstraint(
-        "payment_id", "type", name="uq_balance_tx_payment_type"
-    ),
+    __table_args__ = (
+        UniqueConstraint(
+            "payment_id", "type", name="uq_balance_tx_payment_type"
+        ),
+        Index(
+            "ix_balance_transactions_lesson_charge_unique",
+            "lesson_id",  # Колонка (или список колонок)
+            unique=True,  # Делает индекс уникальным
+            postgresql_where=text("type = 'LESSON_CHARGE'"),  # Условие WHERE
+        ),
     )
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
